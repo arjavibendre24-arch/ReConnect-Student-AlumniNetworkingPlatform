@@ -1,0 +1,253 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f8fafc;
+  color: #172033;
+}
+
+.app {
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.navbar {
+  height: 70px;
+  padding: 0 7%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.logo {
+  font-size: 25px;
+  font-weight: bold;
+  color: #2563eb;
+}
+
+.nav-links {
+  display: flex;
+  gap: 25px;
+  align-items: center;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #475569;
+  font-weight: 600;
+}
+
+.login-btn {
+  background: #2563eb;
+  color: white !important;
+  padding: 10px 20px;
+  border-radius: 8px;
+}
+
+.hero {
+  padding: 80px 7%;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 50px;
+  background: white;
+}
+
+.hero-content {
+  max-width: 650px;
+}
+
+.welcome {
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+/* WELCOME TO RECONNECT */
+.highlight {
+  color: #ffcc00;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.hero h1 {
+  font-size: 55px;
+  line-height: 1.1;
+  margin: 15px 0;
+}
+
+.description {
+  color: #000000;
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+}
+
+.primary-btn,
+.secondary-btn {
+  padding: 13px 22px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.primary-btn {
+  background: #2563eb;
+  color: white;
+}
+
+.secondary-btn {
+  border: 1px solid #000000;
+  color: #000000;
+}
+
+.hero-card {
+  width: 330px;
+  height: 330px;
+  background: #eff6ff;
+  border-radius: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.circle {
+  width: 130px;
+  height: 130px;
+  background: #2563eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.circle span {
+  color: white;
+  font-size: 55px;
+  font-weight: bold;
+}
+
+/* ReConnect heading in card */
+.hero-card h2 {
+  margin-top: 20px;
+  color: #2563eb;
+}
+
+.hero-card p {
+  color: #64748b;
+}
+
+.roles {
+  padding: 80px 7%;
+  text-align: center;
+  background: #f8fafc;
+}
+
+.roles h2 {
+  font-size: 36px;
+}
+
+.section-text {
+  color: #64748b;
+  margin-bottom: 40px;
+}
+
+.role-container {
+  max-width: 1100px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 25px;
+}
+
+.role-card {
+  background: white;
+  padding: 30px;
+  border-radius: 18px;
+  text-align: left;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+}
+
+.role-card:hover {
+  transform: translateY(-5px);
+}
+
+.role-icon {
+  width: 60px;
+  height: 60px;
+  background: #eff6ff;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+}
+
+.role-card h3 {
+  font-size: 21px;
+  margin: 20px 0 10px;
+}
+
+.role-card p {
+  color: #64748b;
+  line-height: 1.6;
+  min-height: 65px;
+}
+
+.role-card button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.about {
+  padding: 80px 7%;
+  text-align: center;
+  background: white;
+}
+
+.about h2 {
+  font-size: 36px;
+}
+
+.about p {
+  max-width: 800px;
+  margin: auto;
+  color: #64748b;
+  line-height: 1.8;
+}
+
+footer {
+  padding: 25px;
+  text-align: center;
+  background: #172033;
+  color: white;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .role-container {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-buttons {
+    justify-content: center;
+  }
+}

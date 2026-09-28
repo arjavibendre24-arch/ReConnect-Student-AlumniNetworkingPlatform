@@ -1,0 +1,22 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 40px;
+  background: white;
+}
+
+.hero {
+  text-align: center;
+  padding: 80px 20px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: white;
+}
+
+.role-card {
+  background: white;
+  padding: 20px;
+  margin: 15px;
+  border-radius: 10px;
+  width: 250px;
+  display: inline-block;
+}
