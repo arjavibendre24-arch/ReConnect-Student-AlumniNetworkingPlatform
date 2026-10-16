@@ -1,17 +1,26 @@
 
 {
-  "name": "reconnect-backend",
+  "name": "reconnect-system",
   "version": "1.0.0",
   "private": true,
-  "main": "server.cjs",
+  "type": "module",
   "scripts": {
-    "start": "node server.cjs"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
-    "mongoose": "^9.10.2"
+    "mongoose": "^9.10.2",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "vite": "^8.3.0"
   }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./StudentDashboard.css";
 
-const API = "http://localhost:5000/api";
+const API = "https://reconnect-system.onrender.com/api";
 
 function StudentDashboard() {
   const [user, setUser] = useState(null);
