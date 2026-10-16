@@ -1,1663 +1,1409 @@
-import { useEffect, useState } from "react";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "./StudentDashboard.css";
 
 const API = "http://localhost:5000/api";
 
-function StudentDashboard() {
-  const [user, setUser] = useState(null);
-  const [activeSection, setActiveSection] = useState("Dashboard");
-  const [loading, setLoading] = useState(false);
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [requestingMentorship, setRequestingMentorship] = useState(null);
+const getUserId = (user) =>
+  user?._id || user?.id || user?.userId || "";
 
-  const [profile, setProfile] = useState({
+const getEventId = (event) =>
+  event?._id || event?.id || "";
+
+const getRelatedId = (value) => {
+  if (value && typeof value === "object") {
+    return value._id || value.id || value.userId || "";
+  }
+  return value || "";
+};
+
+const formatTime = (value) => {
+  if (!value) return "";
+  const text = String(value).trim();
+  const match = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+  if (!match) return text;
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridiem = match[3]?.toUpperCase();
+
+  if (minutes > 59 || hours > 23) return text;
+
+  if (meridiem) {
+    if (hours < 1 || hours > 12) return text;
+    return `${hours}:${String(minutes).padStart(2, "0")} ${meridiem}`;
+  }
+
+  const suffix = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+  return `${hours}:${String(minutes).padStart(2, "0")} ${suffix}`;
+};
+
+const getEventTime = (event) => {
+  const start = event?.time || event?.startTime || event?.eventTime || "";
+  const end = event?.endTime || event?.eventEndTime || "";
+
+  if (start && end) {
+    return `${formatTime(start)} - ${formatTime(end)}`;
+  }
+
+  return start ? formatTime(start) : "Time not specified";
+};
+
+const parseLocalDate = (value) => {
+  if (!value) return null;
+
+  const text = String(value).trim();
+  const isoDate = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (isoDate) {
+    return new Date(
+      Number(isoDate[1]),
+      Number(isoDate[2]) - 1,
+      Number(isoDate[3])
+    );
+  }
+
+  const slashDate = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+
+  if (slashDate) {
+    return new Date(
+      Number(slashDate[3]),
+      Number(slashDate[1]) - 1,
+      Number(slashDate[2])
+    );
+  }
+
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const applyTime = (date, value) => {
+  if (!value) return false;
+
+  const match = String(value).trim().match(
+    /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i
+  );
+
+  if (!match) return false;
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3] || 0);
+  const meridiem = match[4]?.toUpperCase();
+
+  if (minutes > 59 || seconds > 59) return false;
+
+  if (meridiem) {
+    if (hours < 1 || hours > 12) return false;
+    if (meridiem === "PM" && hours !== 12) hours += 12;
+    if (meridiem === "AM" && hours === 12) hours = 0;
+  } else if (hours > 23) {
+    return false;
+  }
+
+  date.setHours(hours, minutes, seconds, 0);
+  return true;
+};
+
+const getEventTiming = (event, now = Date.now()) => {
+  const rawStartDate =
+    event?.startDate ||
+    event?.date ||
+    event?.eventDate ||
+    event?.endDate ||
+    "";
+
+  const rawEndDate =
+    event?.endDate ||
+    event?.eventEndDate ||
+    rawStartDate;
+
+  const timeText = getEventTime(event);
+
+  if (!rawStartDate) {
+    return {
+      ended: false,
+      dateText: "Date not specified",
+      timeText,
+      validDateTime: false,
+    };
+  }
+
+  const startDate = parseLocalDate(rawStartDate);
+  const endDate = parseLocalDate(rawEndDate);
+
+  if (!startDate || !endDate) {
+    return {
+      ended: false,
+      dateText: String(rawStartDate),
+      timeText,
+      validDateTime: false,
+    };
+  }
+
+  const dateText = startDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  const endTime =
+    event?.endTime || event?.eventEndTime || event?.end_time || "";
+
+  if (endTime) {
+    if (!applyTime(endDate, endTime)) {
+      return {
+        ended: false,
+        dateText,
+        timeText,
+        validDateTime: false,
+      };
+    }
+  } else {
+    endDate.setHours(23, 59, 59, 999);
+  }
+
+  return {
+    ended: now >= endDate.getTime(),
+    dateText,
+    timeText,
+    validDateTime: true,
+  };
+};
+
+async function apiRequest(path, options = {}) {
+  const response = await fetch(`${API}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.message || data.error || "Request failed.");
+  }
+
+  return data;
+}
+
+function extractList(data, keys = []) {
+  if (Array.isArray(data)) return data;
+
+  for (const key of keys) {
+    if (Array.isArray(data?.[key])) return data[key];
+  }
+
+  return [];
+}
+
+function extractRegistrations(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.registrations)) return data.registrations;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.data?.registrations)) return data.data.registrations;
+  if (Array.isArray(data?.events)) return data.events;
+  return [];
+}
+
+// Feedback endpoints can return a direct array or wrap it in one or more
+// response objects. Normalize these shapes before checking event IDs.
+function extractFeedbackItems(data) {
+  if (Array.isArray(data)) return data;
+  const possibleArrays = [
+    data?.feedback,
+    data?.eventFeedback,
+    data?.feedbacks,
+    data?.submissions,
+    data?.data,
+    data?.data?.feedback,
+    data?.data?.eventFeedback,
+    data?.data?.feedbacks,
+    data?.data?.submissions,
+    data?.result?.feedback,
+    data?.result?.feedbacks,
+  ];
+  return possibleArrays.find(Array.isArray) || [];
+}
+
+function getFeedbackEventId(item) {
+  const related =
+    item?.eventId ??
+    item?.event ??
+    item?.event_id ??
+    item?.eventID ??
+    item?.eventDetails ??
+    item?.eventDetailsId;
+  return getRelatedId(related);
+}
+
+export default function StudentDashboard() {
+  const [user] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null");
+    } catch {
+      return null;
+    }
+  });
+
+  const [activeSection, setActiveSection] = useState("Dashboard");
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const [profile, setProfile] = useState({});
+  const [alumni, setAlumni] = useState([]);
+  const [alumniSearch, setAlumniSearch] = useState("");
+  const [mentorships, setMentorships] = useState([]);
+  const [opportunities, setOpportunities] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [registrations, setRegistrations] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
     phone: "",
     college: "",
     branch: "",
     year: "",
     skills: "",
-    bio: ""
+    bio: "",
   });
 
-  const [alumni, setAlumni] = useState([]);
-  const [search, setSearch] = useState("");
-  const [mentorshipRequests, setMentorshipRequests] = useState([]);
-  const [opportunities, setOpportunities] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [notifications, setNotifications] = useState([]);
+  const [busyEventId, setBusyEventId] = useState("");
+  const [feedbackEvent, setFeedbackEvent] = useState(null);
+  const [feedbackForm, setFeedbackForm] = useState(null);
+  const [feedbackAnswers, setFeedbackAnswers] = useState({});
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [loadingFeedbackForm, setLoadingFeedbackForm] = useState(false);
+  const [loadingFeedbackEventId, setLoadingFeedbackEventId] = useState("");
 
-  const getUserId = (currentUser) => {
-    return (
-      currentUser?._id ||
-      currentUser?.id ||
-      currentUser?.userId ||
-      null
-    );
-  };
+  const [submittedFeedbackIds, setSubmittedFeedbackIds] = useState(
+    () => new Set()
+  );
+
+  const [endedEventIds, setEndedEventIds] = useState([]);
+  const [now, setNow] = useState(() => Date.now());
+
+  const studentId = getUserId(user);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
-    if (!savedUser) {
+  const isEventEnded = (event) =>
+    getEventTiming(event, now).ended ||
+    endedEventIds.includes(String(getEventId(event)));
+
+  const showMessage = (text) => {
+    setMessage(text);
+    setError("");
+  };
+
+  const showError = (text) => {
+    setError(text);
+    setMessage("");
+  };
+
+  const loadAllData = useCallback(async () => {
+    if (!studentId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const results = await Promise.allSettled([
+        apiRequest(`/profile/${studentId}`),
+        apiRequest("/alumni"),
+        apiRequest(`/mentorship/student/${studentId}`),
+        apiRequest("/opportunities"),
+        apiRequest("/events"),
+        apiRequest(`/events/registrations/student/${studentId}`),
+        apiRequest(`/notifications/${studentId}`),
+        apiRequest(`/events/feedback/student/${studentId}`),
+      ]);
+
+      const valueAt = (index) =>
+        results[index].status === "fulfilled"
+          ? results[index].value
+          : null;
+
+      const profileData = valueAt(0);
+      const alumniData = valueAt(1);
+      const mentorshipData = valueAt(2);
+      const opportunityData = valueAt(3);
+      const eventData = valueAt(4);
+      const registrationData = valueAt(5);
+      const notificationData = valueAt(6);
+      const feedbackData = valueAt(7);
+
+      if (profileData) {
+        const p = profileData.profile || profileData;
+        setProfile(p);
+        setProfileForm({
+          phone: p.phone || "",
+          college: p.college || "",
+          branch: p.branch || "",
+          year: p.year || "",
+          skills: Array.isArray(p.skills)
+            ? p.skills.join(", ")
+            : p.skills || "",
+          bio: p.bio || "",
+        });
+      }
+
+      setAlumni(
+        extractList(alumniData, ["alumni", "users"]).filter(
+          (person) =>
+            String(person.role || "").toLowerCase() === "alumni"
+        )
+      );
+
+      setMentorships(
+        extractList(mentorshipData, ["requests", "mentorships"])
+      );
+      setOpportunities(extractList(opportunityData, ["opportunities"]));
+      setEvents(extractList(eventData, ["events"]));
+      setRegistrations(extractRegistrations(registrationData));
+      setNotifications(
+        extractList(notificationData, ["notifications"])
+      );
+
+      if (feedbackData !== null) {
+        const feedbackItems = extractFeedbackItems(feedbackData);
+        const feedbackIds = feedbackItems
+          .map(getFeedbackEventId)
+          .filter(Boolean)
+          .map((id) => String(id).trim());
+
+        // Merge IDs instead of replacing local state with an empty set if the
+        // API wraps its response differently or returns no matching rows.
+        setSubmittedFeedbackIds((previous) => {
+          const updated = new Set(previous);
+          feedbackIds.forEach((id) => updated.add(id));
+          return updated;
+        });
+      }
+
+      const failed = results.filter(
+        (result) => result.status === "rejected"
+      );
+
+      if (failed.length) {
+        console.warn(
+          "Some dashboard data could not be loaded:",
+          failed.map((result) => result.reason?.message)
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [studentId]);
+
+  useEffect(() => {
+    if (!studentId) {
       window.location.href = "/login";
+      return;
+    }
+    loadAllData();
+  }, [studentId, loadAllData]);
+
+  const registeredEventIds = useMemo(() => {
+    const ids = new Set();
+
+    registrations.forEach((registration) => {
+      const eventId = getRelatedId(
+        registration.eventId || registration.event
+      );
+
+      const registrationStudent = getRelatedId(
+        registration.studentId || registration.student
+      );
+
+      const sameStudent =
+        !registrationStudent ||
+        String(registrationStudent) === String(studentId);
+
+      const status = String(registration.status || "Registered")
+        .trim()
+        .toLowerCase();
+
+      const activeRegistration = [
+        "",
+        "registered",
+        "approved",
+        "active",
+        "confirmed",
+        "attended",
+        "completed",
+        "checked-in",
+      ].includes(status);
+
+      if (eventId && sameStudent && activeRegistration) {
+        ids.add(String(eventId));
+      }
+    });
+
+    return ids;
+  }, [registrations, studentId]);
+
+  const filteredAlumni = useMemo(() => {
+    const query = alumniSearch.trim().toLowerCase();
+    if (!query) return alumni;
+
+    return alumni.filter((person) =>
+      [
+        person.fullName,
+        person.name,
+        person.email,
+        person.company,
+        person.jobTitle,
+        person.branch,
+        person.college,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [alumni, alumniSearch]);
+
+  const saveProfile = async (event) => {
+    event.preventDefault();
+
+    try {
+      await apiRequest("/profile", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: studentId,
+          ...profileForm,
+          skills: profileForm.skills
+            .split(",")
+            .map((skill) => skill.trim())
+            .filter(Boolean),
+        }),
+      });
+
+      setEditingProfile(false);
+      showMessage("Profile saved successfully.");
+      await loadAllData();
+    } catch (err) {
+      showError(err.message || "Unable to save your profile.");
+    }
+  };
+
+  const requestMentorship = async (alumniId) => {
+    if (!alumniId) {
+      showError("Alumni information is missing.");
       return;
     }
 
     try {
-      const parsedUser = JSON.parse(savedUser);
-      const userId = getUserId(parsedUser);
-
-      if (!userId) {
-        alert("User ID not found. Please login again.");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
-        return;
-      }
-
-      setUser(parsedUser);
-      loadAllData(userId);
-    } catch (error) {
-      console.error("User data error:", error);
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+      await apiRequest("/mentorship", {
+        method: "POST",
+        body: JSON.stringify({ studentId, alumniId }),
+      });
+      showMessage("Mentorship request sent.");
+      await loadAllData();
+    } catch (err) {
+      showError(err.message || "Unable to send mentorship request.");
     }
-  }, []);
+  };
 
-  const loadAllData = async (userId) => {
-    if (!userId) return;
+  const handleEventRegistration = async (event, action) => {
+    const eventId = getEventId(event);
 
-    try {
-      setLoading(true);
+    if (!eventId || !studentId) {
+      showError("Event or student information is missing.");
+      return;
+    }
 
-      const [
-        profileRes,
-        alumniRes,
-        mentorshipRes,
-        opportunityRes,
-        eventRes,
-        notificationRes
-      ] = await Promise.all([
-        fetch(`${API}/profile/${userId}`),
-        fetch(`${API}/alumni`),
-        fetch(`${API}/mentorship/student/${userId}`),
-        fetch(`${API}/opportunities`),
-        fetch(`${API}/events`),
-        fetch(`${API}/notifications/${userId}`)
-      ]);
+    if (busyEventId) return;
 
-      // -----------------------------
-      // STUDENT PROFILE
-      // -----------------------------
-      if (profileRes.ok) {
-        const data = await profileRes.json();
-        const profileData = data.profile || data;
-
-        setProfile({
-          phone: profileData.phone || "",
-          college: profileData.college || "",
-          branch: profileData.branch || "",
-          year: profileData.year || "",
-          skills: profileData.skills || "",
-          bio: profileData.bio || ""
-        });
-      }
-
-      // -----------------------------
-      // ALUMNI
-      // -----------------------------
-      if (alumniRes.ok) {
-        const data = await alumniRes.json();
-
-        const alumniData = Array.isArray(data)
-          ? data
-          : data.alumni || [];
-
-        /*
-          IMPORTANT FIX:
-
-          User information and profile information
-          may be stored in different MongoDB collections.
-
-          We first get all alumni users and then load
-          their profiles so that searching by college,
-          branch, year, skills and bio works correctly.
-        */
-
-        const completeAlumni = await Promise.all(
-          alumniData.map(async (person) => {
-            const alumniId =
-              person._id ||
-              person.id ||
-              person.userId;
-
-            if (!alumniId) {
-              return person;
-            }
-
-            try {
-              const profileResponse = await fetch(
-                `${API}/profile/${alumniId}`
-              );
-
-              if (!profileResponse.ok) {
-                return person;
-              }
-
-              const profileData =
-                await profileResponse.json();
-
-              const alumniProfile =
-                profileData.profile ||
-                profileData ||
-                {};
-
-              return {
-                ...person,
-
-                phone:
-                  person.phone ||
-                  alumniProfile.phone ||
-                  "",
-
-                college:
-                  person.college ||
-                  alumniProfile.college ||
-                  "",
-
-                branch:
-                  person.branch ||
-                  alumniProfile.branch ||
-                  "",
-
-                year:
-                  person.year ||
-                  alumniProfile.year ||
-                  "",
-
-                skills:
-                  person.skills ||
-                  alumniProfile.skills ||
-                  "",
-
-                bio:
-                  person.bio ||
-                  alumniProfile.bio ||
-                  "",
-
-                profilePicture:
-                  person.profilePicture ||
-                  alumniProfile.profilePicture ||
-                  ""
-              };
-            } catch (profileError) {
-              console.error(
-                "Alumni profile loading error:",
-                profileError
-              );
-
-              return person;
-            }
-          })
-        );
-
-        setAlumni(completeAlumni);
-      } else {
-        console.error(
-          "Unable to load alumni:",
-          alumniRes.status
-        );
-
-        setAlumni([]);
-      }
-
-      // -----------------------------
-      // MENTORSHIP
-      // -----------------------------
-      if (mentorshipRes.ok) {
-        const data = await mentorshipRes.json();
-
-        const mentorshipData = Array.isArray(data)
-          ? data
-          : data.mentorships || [];
-
-        setMentorshipRequests(mentorshipData);
-      }
-
-      // -----------------------------
-      // OPPORTUNITIES
-      // -----------------------------
-      if (opportunityRes.ok) {
-        const data = await opportunityRes.json();
-
-        setOpportunities(
-          Array.isArray(data)
-            ? data
-            : data.opportunities || []
-        );
-      }
-
-      // -----------------------------
-      // EVENTS
-      // -----------------------------
-      if (eventRes.ok) {
-        const data = await eventRes.json();
-
-        setEvents(
-          Array.isArray(data)
-            ? data
-            : data.events || []
-        );
-      }
-
-      // -----------------------------
-      // NOTIFICATIONS
-      // -----------------------------
-      if (notificationRes.ok) {
-        const data = await notificationRes.json();
-
-        setNotifications(
-          Array.isArray(data)
-            ? data
-            : data.notifications || []
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Loading error:",
-        error
+    if (isEventEnded(event)) {
+      setEndedEventIds((previous) =>
+        previous.includes(String(eventId))
+          ? previous
+          : [...previous, String(eventId)]
       );
-    } finally {
-      setLoading(false);
+      showMessage("Event ended. Registration is closed.");
+      return;
     }
-  };
 
-  const handleProfileChange = (event) => {
-    setProfile((previousProfile) => ({
-      ...previousProfile,
-      [event.target.name]: event.target.value
-    }));
-  };
+    setBusyEventId(String(eventId));
 
-  const saveProfile = async () => {
     try {
-      const userId = getUserId(user);
-
-      if (!userId) {
-        alert("User ID not found. Please login again.");
-        return;
-      }
-
-      const response = await fetch(
-        `${API}/profile`,
-        {
+      if (action === "register") {
+        await apiRequest(`/events/${eventId}/register`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            userId,
-            phone: profile.phone,
-            college: profile.college,
-            branch: profile.branch,
-            year: profile.year,
-            skills: profile.skills,
-            bio: profile.bio
-          })
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert("Profile updated successfully!");
-        setEditingProfile(false);
-        await loadAllData(userId);
+          body: JSON.stringify({ studentId }),
+        });
+        showMessage("You have successfully registered for the event.");
       } else {
-        alert(
-          data.message ||
-            "Unable to update profile."
+        await apiRequest(`/events/${eventId}/register/${studentId}`, {
+          method: "DELETE",
+        });
+        showMessage("Your event registration has been cancelled.");
+      }
+
+      await loadAllData();
+    } catch (err) {
+      const errorMessage = err?.message || "";
+
+      if (
+        /event has already passed|date.*passed|past event|event.*ended|registration.*closed|event.*over/i.test(
+          errorMessage
+        )
+      ) {
+        setEndedEventIds((previous) =>
+          previous.includes(String(eventId))
+            ? previous
+            : [...previous, String(eventId)]
+        );
+        showMessage("Event ended. Registration is closed.");
+      } else {
+        showError(
+          errorMessage ||
+            (action === "register"
+              ? "Unable to register for this event."
+              : "Unable to cancel registration.")
         );
       }
-    } catch (error) {
-      console.error(
-        "Profile update error:",
-        error
-      );
-
-      alert("Cannot connect to the server.");
+    } finally {
+      setBusyEventId("");
     }
   };
 
-  const getMentorshipStatus = (alumniId) => {
-    const request =
-      mentorshipRequests.find((item) => {
-        const requestAlumniId =
-          item.alumniId?._id ||
-          item.alumniId ||
-          item.alumni?._id ||
-          item.alumni;
+  const openFeedbackForm = async (event) => {
+    const eventId = getEventId(event);
 
-        return (
-          requestAlumniId?.toString() ===
-          alumniId?.toString()
+    if (!eventId) {
+      showError("Event information is missing.");
+      return;
+    }
+
+    if (!registeredEventIds.has(String(eventId))) {
+      showError(
+        "Only students registered for this event can access its feedback form."
+      );
+      return;
+    }
+
+    if (!isEventEnded(event)) {
+      showError("Feedback is available after the event has ended.");
+      return;
+    }
+
+    if (submittedFeedbackIds.has(String(eventId))) {
+      showError("You have already submitted feedback for this event.");
+      return;
+    }
+
+    setLoadingFeedbackForm(true);
+    setLoadingFeedbackEventId(String(eventId));
+    setMessage("");
+    setError("");
+
+    try {
+      const result = await apiRequest(
+        `/events/${eventId}/feedback-form`
+      );
+
+      const form = result.form || result.feedbackForm || result;
+
+      if (
+        !form ||
+        !Array.isArray(form.questions) ||
+        form.questions.length === 0
+      ) {
+        showError(
+          "The organizer has not published a feedback form for this event yet."
         );
+        return;
+      }
+
+      if (String(form.status || "").toLowerCase() !== "published") {
+        showError("The organizer has not published this feedback form yet.");
+        return;
+      }
+
+      setFeedbackEvent(event);
+      setFeedbackForm(form);
+
+      const initialAnswers = {};
+      form.questions.forEach((question) => {
+        const questionId = String(question._id || question.id || "");
+        if (questionId) {
+          initialAnswers[questionId] =
+            String(question.type).toLowerCase() === "rating" ? "" : "";
+        }
       });
 
-    return request?.status || null;
-  };
-
-  const requestMentorship = async (alumniId) => {
-    try {
-      const studentId = getUserId(user);
-
-      if (!studentId) {
-        alert(
-          "Student ID not found. Please login again."
-        );
-        return;
-      }
-
-      if (!alumniId) {
-        alert("Alumni ID not found.");
-        return;
-      }
-
-      const existingStatus =
-        getMentorshipStatus(alumniId);
-
-      if (existingStatus) {
-        alert(
-          `You already have a ${existingStatus.toLowerCase()} mentorship request with this alumni.`
-        );
-        return;
-      }
-
-      setRequestingMentorship(alumniId);
-
-      const response = await fetch(
-        `${API}/mentorship`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            studentId,
-            alumniId
-          })
-        }
+      setFeedbackAnswers(initialAnswers);
+    } catch (err) {
+      showError(
+        err.message ||
+          "Unable to load the published feedback form. Please try again."
       );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert(
-          "Mentorship request sent successfully!"
-        );
-
-        await loadAllData(studentId);
-      } else {
-        alert(
-          data.message ||
-            "Unable to send mentorship request."
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Mentorship error:",
-        error
-      );
-
-      alert("Cannot connect to the server.");
     } finally {
-      setRequestingMentorship(null);
+      setLoadingFeedbackForm(false);
+      setLoadingFeedbackEventId("");
     }
   };
+
+  const submitEventFeedback = async (event) => {
+    const eventId = getEventId(event);
+
+    if (!eventId || !studentId) {
+      showError("Event or student information is missing.");
+      return;
+    }
+
+    if (!registeredEventIds.has(String(eventId))) {
+      showError("Only registered students can submit event feedback.");
+      return;
+    }
+
+    if (!isEventEnded(event)) {
+      showError("You can submit feedback only after the event has ended.");
+      return;
+    }
+
+    if (submittedFeedbackIds.has(String(eventId))) {
+      showError("You have already submitted feedback for this event.");
+      return;
+    }
+
+    if (
+      !feedbackForm ||
+      !Array.isArray(feedbackForm.questions) ||
+      feedbackForm.questions.length === 0
+    ) {
+      showError("The published feedback form could not be loaded.");
+      return;
+    }
+
+    for (const question of feedbackForm.questions) {
+      const questionId = String(question._id || question.id || "");
+      const answer = feedbackAnswers[questionId];
+
+      if (
+        question.required !== false &&
+        (answer === undefined || String(answer).trim() === "")
+      ) {
+        showError(`Please answer: ${question.question}`);
+        return;
+      }
+
+      if (
+        String(question.type).toLowerCase() === "rating" &&
+        answer !== undefined &&
+        answer !== "" &&
+        (!Number.isInteger(Number(answer)) ||
+          Number(answer) < 1 ||
+          Number(answer) > 5)
+      ) {
+        showError("Ratings must be between 1 and 5.");
+        return;
+      }
+    }
+
+    const answers = feedbackForm.questions
+      .filter((question) => {
+        const questionId = String(question._id || question.id || "");
+        const answer = feedbackAnswers[questionId];
+        return answer !== undefined && String(answer).trim() !== "";
+      })
+      .map((question) => {
+        const questionId = String(question._id || question.id || "");
+        const isRating =
+          String(question.type).toLowerCase() === "rating";
+
+        return {
+          questionId,
+          answer: isRating
+            ? Number(feedbackAnswers[questionId])
+            : String(feedbackAnswers[questionId]).trim(),
+        };
+      });
+
+    setSubmittingFeedback(true);
+
+    try {
+      await apiRequest(`/events/${eventId}/feedback`, {
+        method: "POST",
+        body: JSON.stringify({ studentId, answers }),
+      });
+
+      setSubmittedFeedbackIds((previous) => {
+        const updated = new Set(previous);
+        updated.add(String(eventId));
+        return updated;
+      });
+
+      showMessage("Thank you! Your event feedback has been submitted.");
+      setFeedbackEvent(null);
+      setFeedbackForm(null);
+      setFeedbackAnswers({});
+      await loadAllData();
+   
+    } catch (err) {
+      const errorMessage = err?.message || "";
+
+      if (/already submitted/i.test(errorMessage)) {
+        setSubmittedFeedbackIds((previous) => {
+          const updated = new Set(previous);
+          updated.add(String(eventId));
+          return updated;
+        });
+
+        showMessage("✓ Feedback has already been submitted for this event.");
+
+        setFeedbackEvent(null);
+        setFeedbackForm(null);
+        setFeedbackAnswers({});
+
+        await loadAllData();
+      } else {
+        showError(
+          errorMessage ||
+            "Unable to submit feedback. Please check the form and try again."
+        );
+      }
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
+
 
   const logout = () => {
     localStorage.removeItem("user");
     window.location.href = "/login";
   };
 
-  // ------------------------------------
-  // IMPROVED ALUMNI SEARCH
-  // ------------------------------------
-  const filteredAlumni = alumni.filter((person) => {
-    const text = search.trim().toLowerCase();
+  const menuItems = [
+    "Dashboard",
+    "My Profile",
+    "Search Alumni",
+    "Mentorship",
+    "Opportunities",
+    "Events",
+    "Notifications",
+    "Account",
+  ];
 
-    if (!text) {
-      return true;
-    }
+  const upcomingEvents = events.filter((event) => !isEventEnded(event));
 
-    const searchableText = [
-      person.fullName,
-      person.name,
-      person.email,
-      person.college,
-      person.branch,
-      person.year,
-      person.skills,
-      person.company,
-      person.designation,
-      person.bio
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+  const quickLinks = [
+    { title: "Find Alumni", section: "Search Alumni", icon: "👥", description: "Connect with experienced alumni", tone: "violet" },
+    { title: "Mentorship", section: "Mentorship", icon: "🤝", description: "Track your mentorship requests", tone: "blue" },
+    { title: "Opportunities", section: "Opportunities", icon: "🚀", description: "Explore jobs and career openings", tone: "orange" },
+    { title: "Events", section: "Events", icon: "📅", description: "Join events and share feedback", tone: "green" },
+  ];
 
-    return searchableText.includes(text);
-  });
+  const goToSection = (section) => {
+    setActiveSection(section);
+    setMessage("");
+    setError("");
+  };
 
-  if (!user) {
-    return (
-      <div className="loading-screen">
-        Loading ReConnect...
-      </div>
-    );
-  }
-
-  // ------------------------------------
-  // DASHBOARD
-  // ------------------------------------
   const renderDashboard = () => (
-    <>
+    <div className="student-home">
       <section className="welcome-banner">
-        <div className="welcome-content">
-          <span className="welcome-label">
-            STUDENT PORTAL
-          </span>
+        <div className="welcome-copy">
+          <span className="eyebrow">YOUR STUDENT COMMUNITY</span>
+          <h2>Build connections. <span>Shape your future.</span></h2>
+          <p>Welcome back, {user?.fullName || user?.name || "Student"}! Pick up where you left off and make your next opportunity happen.</p>
+          <button type="button" className="welcome-cta" onClick={() => goToSection("Search Alumni")}>Explore your network <span>→</span></button>
+        </div>
+        <div className="welcome-art" aria-hidden="true">
+          <div className="orbit orbit-one"></div><div className="orbit orbit-two"></div>
+          <div className="welcome-emoji">🎓</div>
+          <span className="float-chip chip-one">✦ Learn</span>
+          <span className="float-chip chip-two">↗ Grow</span>
+          <span className="float-chip chip-three">♡ Connect</span>
+        </div>
+      </section>
 
-          <h1>
-            Welcome back,{" "}
-            {user.fullName?.split(" ")[0] ||
-              "Student"}!
-          </h1>
+      <div className="section-heading">
+        <div><span className="eyebrow">AT A GLANCE</span><h2>Your overview</h2></div>
+        <span className="overview-note">Everything you need, in one place</span>
+      </div>
 
+      <div className="dashboard-stats">
+        <button type="button" className="stat-card stat-violet" onClick={() => goToSection("Search Alumni")}>
+          <span className="stat-icon">👥</span><span className="stat-label">Alumni Available</span><strong>{alumni.length}</strong><span className="stat-foot">Explore your network <b>→</b></span>
+        </button>
+        <button type="button" className="stat-card stat-blue" onClick={() => goToSection("Mentorship")}>
+          <span className="stat-icon">🤝</span><span className="stat-label">Mentorship Requests</span><strong>{mentorships.length}</strong><span className="stat-foot">View your requests <b>→</b></span>
+        </button>
+        <button type="button" className="stat-card stat-orange" onClick={() => goToSection("Opportunities")}>
+          <span className="stat-icon">🚀</span><span className="stat-label">Opportunities</span><strong>{opportunities.length}</strong><span className="stat-foot">Find your next step <b>→</b></span>
+        </button>
+        <button type="button" className="stat-card stat-green" onClick={() => goToSection("Events")}>
+          <span className="stat-icon">📅</span><span className="stat-label">Upcoming Events</span><strong>{upcomingEvents.length}</strong><span className="stat-foot">See what's happening <b>→</b></span>
+        </button>
+      </div>
+
+      <div className="section-heading quick-heading">
+        <div><span className="eyebrow">QUICK ACCESS</span><h2>Where would you like to go?</h2></div>
+      </div>
+      <div className="quick-links-grid">
+        {quickLinks.map((link) => (
+          <button type="button" key={link.section} className={`quick-link-card quick-${link.tone}`} onClick={() => goToSection(link.section)}>
+            <span className="quick-link-icon">{link.icon}</span><span className="quick-link-arrow">↗</span>
+            <strong>{link.title}</strong><span>{link.description}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="section-heading events-heading">
+        <div><span className="eyebrow">DON'T MISS OUT</span><h2>Upcoming events</h2></div>
+        <button type="button" className="text-link-button" onClick={() => goToSection("Events")}>View all events <span>→</span></button>
+      </div>
+
+      {upcomingEvents.length === 0 ? (
+        <div className="empty-events-panel"><div className="empty-events-icon">🗓️</div><div><h3>You're all caught up</h3><p>There are no upcoming events right now. Check the Events page again soon for new sessions and opportunities.</p></div><button type="button" onClick={() => goToSection("Events")}>Browse events</button></div>
+      ) : (
+        <div className="events-grid dashboard-events-grid">
+          {upcomingEvents.slice(0, 3).map((event) => {
+            const timing = getEventTiming(event, now);
+            return (
+              <div className="event-card dashboard-event-card" key={getEventId(event)}>
+                <div className="event-card-topline"><span className="event-type-pill">COMMUNITY EVENT</span><span className="event-card-symbol">✦</span></div>
+                <h3>{event.title || event.name || "Untitled Event"}</h3>
+                <p>📅 <span>{timing.dateText}</span></p><p>🕒 <span>{timing.timeText}</span></p><p>📍 <span>{event.location || "Location not specified"}</span></p>
+                <button type="button" onClick={() => goToSection("Events")}>View event details <span>→</span></button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderProfile = () => (
+    <>
+      <h2>My Profile</h2>
+
+      {!editingProfile ? (
+        <div className="profile-card">
+          <p><strong>Name:</strong> {user?.fullName || user?.name || "Student"}</p>
+          <p><strong>Email:</strong> {user?.email || "Not available"}</p>
+          <p><strong>Phone:</strong> {profile.phone || "Not added"}</p>
+          <p><strong>College:</strong> {profile.college || "Not added"}</p>
+          <p><strong>Branch:</strong> {profile.branch || "Not added"}</p>
+          <p><strong>Year:</strong> {profile.year || "Not added"}</p>
           <p>
-            Build meaningful connections with alumni
-            and discover new opportunities.
+            <strong>Skills:</strong>{" "}
+            {Array.isArray(profile.skills)
+              ? profile.skills.join(", ")
+              : profile.skills || "Not added"}
           </p>
-
-          <button
-            type="button"
-            className="primary-action"
-            onClick={() =>
-              setActiveSection("Search Alumni")
-            }
-          >
-            Explore Alumni →
+          <p><strong>Bio:</strong> {profile.bio || "Not added"}</p>
+          <button type="button" onClick={() => setEditingProfile(true)}>
+            Edit Profile
           </button>
         </div>
+      ) : (
+        <form className="profile-form" onSubmit={saveProfile}>
+          {[
+            ["phone", "Phone"],
+            ["college", "College"],
+            ["branch", "Branch"],
+            ["year", "Year"],
+            ["skills", "Skills (comma separated)"],
+            ["bio", "Bio"],
+          ].map(([key, label]) => (
+            <label key={key}>
+              {label}
+              {key === "bio" ? (
+                <textarea
+                  value={profileForm[key]}
+                  onChange={(e) =>
+                    setProfileForm((previous) => ({
+                      ...previous,
+                      [key]: e.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <input
+                  value={profileForm[key]}
+                  onChange={(e) =>
+                    setProfileForm((previous) => ({
+                      ...previous,
+                      [key]: e.target.value,
+                    }))
+                  }
+                />
+              )}
+            </label>
+          ))}
 
-        <div className="welcome-graphic">
-          <div className="graphic-circle circle-one"></div>
-          <div className="graphic-circle circle-two"></div>
-
-          <div className="graphic-person">
-            🎓
-          </div>
-        </div>
-      </section>
-
-      <div className="section-heading-row">
-        <div>
-          <span className="section-label">
-            OVERVIEW
-          </span>
-
-          <h2>Your Activity</h2>
-        </div>
-      </div>
-
-      <section className="stats-grid">
-        <button
-          type="button"
-          className="modern-stat stat-button"
-          onClick={() =>
-            setActiveSection("Search Alumni")
-          }
-        >
-          <div className="stat-icon">
-            👥
-          </div>
-
-          <div className="stat-info">
-            <span>Alumni</span>
-            <strong>{alumni.length}</strong>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          className="modern-stat stat-button"
-          onClick={() =>
-            setActiveSection("Mentorship")
-          }
-        >
-          <div className="stat-icon">
-            🤝
-          </div>
-
-          <div className="stat-info">
-            <span>Mentorship</span>
-            <strong>
-              {mentorshipRequests.length}
-            </strong>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          className="modern-stat stat-button"
-          onClick={() =>
-            setActiveSection("Opportunities")
-          }
-        >
-          <div className="stat-icon">
-            💼
-          </div>
-
-          <div className="stat-info">
-            <span>Opportunities</span>
-            <strong>
-              {opportunities.length}
-            </strong>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          className="modern-stat stat-button"
-          onClick={() =>
-            setActiveSection("Events")
-          }
-        >
-          <div className="stat-icon">
-            📅
-          </div>
-
-          <div className="stat-info">
-            <span>Events</span>
-            <strong>{events.length}</strong>
-          </div>
-        </button>
-      </section>
+          <button type="submit">Save Profile</button>
+          <button type="button" onClick={() => setEditingProfile(false)}>
+            Cancel
+          </button>
+        </form>
+      )}
     </>
   );
 
-  // ------------------------------------
-  // PROFILE
-  // ------------------------------------
-  const renderProfile = () => (
-    <section className="profile-page">
-      <div className="page-title-area">
-        <span className="section-label">
-          ACCOUNT
-        </span>
-
-        <h1>My Profile</h1>
-
-        <p>
-          View and manage your personal and academic
-          information.
-        </p>
-      </div>
-
-      <div className="profile-card">
-        <div className="profile-cover"></div>
-
-        <div className="profile-header">
-          <div className="large-avatar">
-            {user.fullName
-              ?.charAt(0)
-              .toUpperCase() || "S"}
-          </div>
-
-          <div className="profile-main-info">
-            <h2>{user.fullName}</h2>
-
-            <p>{user.email}</p>
-
-            <span className="role-badge">
-              Student
-            </span>
-          </div>
-
-          {!editingProfile && (
-            <button
-              type="button"
-              className="edit-profile-btn"
-              onClick={() =>
-                setEditingProfile(true)
-              }
-            >
-              ✎ Edit Profile
-            </button>
-          )}
-        </div>
-
-        {!editingProfile ? (
-          <div className="profile-details">
-            <div className="profile-detail">
-              <span>Phone</span>
-              <strong>
-                {profile.phone || "Not added"}
-              </strong>
-            </div>
-
-            <div className="profile-detail">
-              <span>College</span>
-              <strong>
-                {profile.college || "Not added"}
-              </strong>
-            </div>
-
-            <div className="profile-detail">
-              <span>Branch</span>
-              <strong>
-                {profile.branch || "Not added"}
-              </strong>
-            </div>
-
-            <div className="profile-detail">
-              <span>Year</span>
-              <strong>
-                {profile.year || "Not added"}
-              </strong>
-            </div>
-
-            <div className="profile-detail full-detail">
-              <span>Skills</span>
-              <strong>
-                {profile.skills || "Not added"}
-              </strong>
-            </div>
-
-            <div className="profile-detail full-detail">
-              <span>About Me</span>
-              <strong>
-                {profile.bio ||
-                  "No bio added yet."}
-              </strong>
-            </div>
-          </div>
-        ) : (
-          <div className="profile-edit-form">
-            <div className="form-section-title">
-              <h3>Edit Profile</h3>
-
-              <p>
-                Update your information below.
-              </p>
-            </div>
-
-            <div className="profile-form-grid">
-              <div className="form-field">
-                <label>Full Name</label>
-
-                <input
-                  type="text"
-                  value={user.fullName || ""}
-                  disabled
-                />
-              </div>
-
-              <div className="form-field">
-                <label>Email</label>
-
-                <input
-                  type="email"
-                  value={user.email || ""}
-                  disabled
-                />
-              </div>
-
-              <div className="form-field">
-                <label>Phone</label>
-
-                <input
-                  name="phone"
-                  value={profile.phone}
-                  onChange={handleProfileChange}
-                  placeholder="Enter phone number"
-                />
-              </div>
-
-              <div className="form-field">
-                <label>College</label>
-
-                <input
-                  name="college"
-                  value={profile.college}
-                  onChange={handleProfileChange}
-                  placeholder="Enter college name"
-                />
-              </div>
-
-              <div className="form-field">
-                <label>Branch</label>
-
-                <input
-                  name="branch"
-                  value={profile.branch}
-                  onChange={handleProfileChange}
-                  placeholder="e.g. Information Technology"
-                />
-              </div>
-
-              <div className="form-field">
-                <label>Year</label>
-
-                <select
-                  name="year"
-                  value={profile.year}
-                  onChange={handleProfileChange}
-                >
-                  <option value="">
-                    Select year
-                  </option>
-
-                  <option value="First Year">
-                    First Year
-                  </option>
-
-                  <option value="Second Year">
-                    Second Year
-                  </option>
-
-                  <option value="Third Year">
-                    Third Year
-                  </option>
-
-                  <option value="Final Year">
-                    Final Year
-                  </option>
-                </select>
-              </div>
-
-              <div className="form-field full-width">
-                <label>Skills</label>
-
-                <input
-                  name="skills"
-                  value={profile.skills}
-                  onChange={handleProfileChange}
-                  placeholder="e.g. Java, Python, React, MongoDB"
-                />
-              </div>
-
-              <div className="form-field full-width">
-                <label>About Me</label>
-
-                <textarea
-                  name="bio"
-                  value={profile.bio}
-                  onChange={handleProfileChange}
-                  placeholder="Write a short description about yourself..."
-                  rows="5"
-                ></textarea>
-              </div>
-            </div>
-
-            <div className="profile-actions">
-              <button
-                type="button"
-                className="cancel-btn"
-                onClick={() =>
-                  setEditingProfile(false)
-                }
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className="save-profile-btn"
-                onClick={saveProfile}
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-
-  // ------------------------------------
-  // SEARCH ALUMNI
-  // ------------------------------------
   const renderSearchAlumni = () => (
-    <section className="alumni-page">
-      <div className="page-title-area alumni-title">
-        <div>
-          <span className="section-label">
-            NETWORK
-          </span>
+    <>
+      <h2>Search Alumni</h2>
+      <input
+        type="search"
+        placeholder="Search by name, company, branch or email..."
+        value={alumniSearch}
+        onChange={(e) => setAlumniSearch(e.target.value)}
+      />
 
-          <h1>Search Alumni</h1>
+      <div className="alumni-grid">
+        {filteredAlumni.map((person) => {
+          const alumniId = getUserId(person);
 
-          <p>
-            Discover experienced alumni and connect
-            with them for guidance, mentorship and
-            career opportunities.
-          </p>
-        </div>
-
-        <div className="alumni-count">
-          <strong>
-            {filteredAlumni.length}
-          </strong>
-
-          <span>Alumni Found</span>
-        </div>
-      </div>
-
-      <div className="alumni-search-box">
-        <span className="search-icon">
-          ⌕
-        </span>
-
-        <input
-          type="text"
-          placeholder="Search by name, email, college, branch, skills, company or designation..."
-          value={search}
-          onChange={(event) =>
-            setSearch(event.target.value)
-          }
-        />
-
-        {search && (
-          <button
-            type="button"
-            className="clear-search"
-            onClick={() => setSearch("")}
-          >
-            ×
-          </button>
-        )}
-      </div>
-
-      {loading ? (
-        <div className="empty-alumni">
-          <div className="empty-icon">
-            ⏳
-          </div>
-
-          <h3>Loading alumni...</h3>
-
-          <p>
-            Finding approved alumni profiles.
-          </p>
-        </div>
-      ) : filteredAlumni.length > 0 ? (
-        <div className="alumni-grid">
-          {filteredAlumni.map(
-            (person, index) => {
-              const alumniId =
-                person._id ||
-                person.id ||
-                person.userId;
-
-              const mentorshipStatus =
-                getMentorshipStatus(alumniId);
-
-              return (
-                <div
-                  className="alumni-card"
-                  key={
-                    alumniId || index
-                  }
-                >
-                  <div className="alumni-card-top">
-                    <div className="alumni-avatar">
-                      {(
-                        person.fullName ||
-                        person.name ||
-                        "A"
-                      )
-                        .charAt(0)
-                        .toUpperCase()}
-                    </div>
-
-                    <span className="available-badge">
-                      ● Available
-                    </span>
-                  </div>
-
-                  <div className="alumni-info">
-                    <h3>
-                      {person.fullName ||
-                        person.name ||
-                        "Alumni"}
-                    </h3>
-
-                    <p className="alumni-email">
-                      {person.email ||
-                        "Email not available"}
-                    </p>
-
-                    {person.designation && (
-                      <p className="alumni-designation">
-                        💼 {person.designation}
-                      </p>
-                    )}
-
-                    {person.company && (
-                      <p className="alumni-designation">
-                        🏢 {person.company}
-                      </p>
-                    )}
-
-                    {person.college && (
-                      <p className="alumni-designation">
-                        🎓 {person.college}
-                      </p>
-                    )}
-
-                    <div className="alumni-tags">
-                      {person.branch && (
-                        <span>
-                          {person.branch}
-                        </span>
-                      )}
-
-                      {person.year && (
-                        <span>
-                          {person.year}
-                        </span>
-                      )}
-
-                      {person.skills && (
-                        <span>
-                          {person.skills}
-                        </span>
-                      )}
-                    </div>
-
-                    {person.bio && (
-                      <p className="alumni-bio">
-                        {person.bio}
-                      </p>
-                    )}
-                  </div>
-
-                  {mentorshipStatus ? (
-                    <button
-                      type="button"
-                      className="mentorship-btn"
-                      disabled
-                    >
-                      {mentorshipStatus ===
-                      "Accepted"
-                        ? "✓ Mentorship Accepted"
-                        : mentorshipStatus ===
-                          "Rejected"
-                        ? "Request Rejected"
-                        : "Request Pending"}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="mentorship-btn"
-                      disabled={
-                        requestingMentorship ===
-                        alumniId
-                      }
-                      onClick={() =>
-                        requestMentorship(
-                          alumniId
-                        )
-                      }
-                    >
-                      {requestingMentorship ===
-                      alumniId
-                        ? "Sending..."
-                        : "Request Mentorship"}
-
-                      {requestingMentorship !==
-                        alumniId && (
-                        <span>→</span>
-                      )}
-                    </button>
-                  )}
-                </div>
-              );
-            }
-          )}
-        </div>
-      ) : (
-        <div className="empty-alumni">
-          <div className="empty-icon">
-            👥
-          </div>
-
-          <h3>
-            {search
-              ? "No alumni found"
-              : "No approved alumni available"}
-          </h3>
-
-          <p>
-            {search
-              ? "Try searching by the alumni name, college, branch, year, skill or company."
-              : "Once an alumni account is approved and their profile is created, it will appear here."}
-          </p>
-
-          {search && (
-            <button
-              type="button"
-              className="clear-search-btn"
-              onClick={() => setSearch("")}
-            >
-              Clear Search
-            </button>
-          )}
-        </div>
-      )}
-    </section>
-  );
-
-  // ------------------------------------
-  // MENTORSHIP
-  // ------------------------------------
-  const renderMentorship = () => (
-    <section className="simple-page">
-      <div className="page-title-area">
-        <span className="section-label">
-          CONNECTIONS
-        </span>
-
-        <h1>Mentorship</h1>
-
-        <p>
-          Track your mentorship requests and
-          connection status.
-        </p>
-      </div>
-
-      {mentorshipRequests.length === 0 ? (
-        <div className="empty-alumni">
-          <div className="empty-icon">
-            🤝
-          </div>
-
-          <h3>
-            No mentorship requests
-          </h3>
-
-          <p>
-            Search alumni and send your first
-            mentorship request.
-          </p>
-
-          <button
-            type="button"
-            className="clear-search-btn"
-            onClick={() =>
-              setActiveSection(
-                "Search Alumni"
+          const existingRequest = mentorships.some((request) => {
+            const id = getRelatedId(request.alumniId || request.alumni);
+            return (
+              String(id) === String(alumniId) &&
+              !["rejected", "cancelled", "canceled"].includes(
+                String(request.status || "").toLowerCase()
               )
-            }
-          >
-            Search Alumni
-          </button>
-        </div>
-      ) : (
-        <div className="request-list">
-          {mentorshipRequests.map(
-            (request, index) => {
-              const alumniName =
-                request.alumniId?.fullName ||
-                request.alumni?.fullName ||
-                request.alumniName ||
-                "Alumni";
+            );
+          });
 
-              const status =
-                request.status ||
-                "Pending";
+          return (
+            <div className="alumni-card" key={alumniId}>
+              <h3>{person.fullName || person.name || "Alumni"}</h3>
+              <p>{person.email}</p>
+              <p>{person.company || person.jobTitle || ""}</p>
+              <p>{person.branch || ""}</p>
+              <button
+                type="button"
+                disabled={!alumniId || existingRequest}
+                onClick={() => requestMentorship(alumniId)}
+              >
+                {existingRequest ? "Request Sent" : "Request Mentorship"}
+              </button>
+            </div>
+          );
+        })}
 
-              return (
-                <div
-                  className="request-card"
-                  key={
-                    request._id || index
-                  }
-                >
-                  <div className="request-avatar">
-                    🤝
-                  </div>
-
-                  <div>
-                    <h3>{alumniName}</h3>
-
-                    <p>
-                      Mentorship Request
-                    </p>
-
-                    <p>
-                      Status:{" "}
-                      <strong>
-                        {status}
-                      </strong>
-                    </p>
-                  </div>
-                </div>
-              );
-            }
-          )}
-        </div>
-      )}
-    </section>
+        {filteredAlumni.length === 0 && <p>No alumni found.</p>}
+      </div>
+    </>
   );
 
-  // ------------------------------------
-  // OPPORTUNITIES
-  // ------------------------------------
+  const renderMentorship = () => (
+    <>
+      <h2>My Mentorship Requests</h2>
+      {mentorships.length === 0 ? (
+        <p>You have not made any mentorship requests yet.</p>
+      ) : (
+        <div className="mentorship-list">
+          {mentorships.map((request, index) => (
+            <div
+              className="mentorship-card"
+              key={request._id || request.id || index}
+            >
+              <h3>
+                {request.alumniId?.fullName ||
+                  request.alumni?.fullName ||
+                  request.alumniName ||
+                  "Alumni Mentor"}
+              </h3>
+              <p>Status: {request.status || "Pending"}</p>
+              <p>{request.message || ""}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
   const renderOpportunities = () => (
-    <section className="simple-page">
-      <div className="page-title-area">
-        <span className="section-label">
-          CAREER
-        </span>
-
-        <h1>Opportunities</h1>
-
-        <p>
-          Explore opportunities shared by the
-          ReConnect community.
-        </p>
-      </div>
-
-      <div className="content-grid">
-        {opportunities.length === 0 ? (
-          <div className="empty-alumni">
-            <div className="empty-icon">
-              💼
-            </div>
-
-            <h3>
-              No opportunities available
-            </h3>
-
-            <p>
-              New opportunities will appear here.
-            </p>
-          </div>
-        ) : (
-          opportunities.map(
-            (item, index) => (
-              <div
-                className="content-card"
-                key={
-                  item._id || index
-                }
-              >
-                <div className="content-card-icon">
-                  💼
-                </div>
-
-                <h3>
-                  {item.title ||
-                    "Opportunity"}
-                </h3>
-
-                <p>
-                  {item.description ||
-                    "No description available."}
-                </p>
-
-                {item.company && (
-                  <p>
-                    <strong>
-                      Company:
-                    </strong>{" "}
-                    {item.company}
-                  </p>
-                )}
-
-                {item.link && (
-                  <a
-                    href={item.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="opportunity-link"
-                  >
-                    View Opportunity →
-                  </a>
-                )}
-              </div>
-            )
-          )
-        )}
-      </div>
-    </section>
-  );
-
-  // ------------------------------------
-  // EVENTS
-  // ------------------------------------
-  const renderEvents = () => (
-    <section className="simple-page">
-      <div className="page-title-area">
-        <span className="section-label">
-          COMMUNITY
-        </span>
-
-        <h1>Events</h1>
-
-        <p>
-          Discover upcoming ReConnect events.
-        </p>
-      </div>
-
-      <div className="content-grid">
-        {events.length === 0 ? (
-          <div className="empty-alumni">
-            <div className="empty-icon">
-              📅
-            </div>
-
-            <h3>
-              No events available
-            </h3>
-
-            <p>
-              Upcoming events will appear here.
-            </p>
-          </div>
-        ) : (
-          events.map(
-            (event, index) => (
-              <div
-                className="content-card"
-                key={
-                  event._id || index
-                }
-              >
-                <div className="content-card-icon">
-                  📅
-                </div>
-
-                <h3>
-                  {event.title ||
-                    event.name ||
-                    "ReConnect Event"}
-                </h3>
-
-                <p>
-                  {event.description ||
-                    "Join this ReConnect community event."}
-                </p>
-
-                {event.date && (
-                  <p>
-                    <strong>
-                      📅 Date:
-                    </strong>{" "}
-                    {event.date}
-                  </p>
-                )}
-
-                {event.time && (
-                  <p>
-                    <strong>
-                      ⏰ Time:
-                    </strong>{" "}
-                    {event.time}
-                  </p>
-                )}
-
-                {event.location && (
-                  <p>
-                    <strong>
-                      📍 Location:
-                    </strong>{" "}
-                    {event.location}
-                  </p>
-                )}
-
-                {event.organizer && (
-                  <p>
-                    <strong>
-                      Organizer:
-                    </strong>{" "}
-                    {typeof event.organizer ===
-                    "object"
-                      ? event.organizer.fullName ||
-                        event.organizer.name ||
-                        "ReConnect"
-                      : "ReConnect"}
-                  </p>
-                )}
-              </div>
-            )
-          )
-        )}
-      </div>
-    </section>
-  );
-
-  // ------------------------------------
-  // NOTIFICATIONS
-  // ------------------------------------
-  const renderNotifications = () => (
-    <section className="simple-page">
-      <div className="page-title-area">
-        <span className="section-label">
-          UPDATES
-        </span>
-
-        <h1>Notifications</h1>
-
-        <p>
-          Stay updated with your ReConnect
-          activities.
-        </p>
-      </div>
-
-      {notifications.length === 0 ? (
-        <div className="empty-alumni">
-          <div className="empty-icon">
-            🔔
-          </div>
-
-          <h3>
-            No notifications
-          </h3>
-
-          <p>
-            You are all caught up.
-          </p>
-        </div>
+    <>
+      <h2>Opportunities</h2>
+      {opportunities.length === 0 ? (
+        <p>No opportunities are available right now.</p>
       ) : (
-        <div className="notification-list">
-          {notifications.map(
-            (notification, index) => (
-              <div
-                className="notification-card"
-                key={
-                  notification._id ||
-                  index
-                }
-              >
-                <div className="notification-icon">
-                  🔔
-                </div>
+        <div className="opportunities-grid">
+          {opportunities.map((opportunity, index) => (
+            <div
+              className="opportunity-card"
+              key={opportunity._id || opportunity.id || index}
+            >
+              <h3>{opportunity.title || opportunity.name}</h3>
+              <p>{opportunity.company || ""}</p>
+              <p>{opportunity.description || ""}</p>
 
-                <div>
-                  <h3>
-                    {notification.title ||
-                      notification.type ||
-                      "ReConnect Notification"}
-                  </h3>
+              {(opportunity.date ||
+                opportunity.startDate ||
+                opportunity.eventDate) && (
+                <p>
+                  📅 <strong>Date:</strong>{" "}
+                  {getEventTiming(opportunity, now).dateText}
+                </p>
+              )}
 
-                  <p>
-                    {notification.message ||
-                      notification.text ||
-                      notification.description ||
-                      "You have a new ReConnect notification."}
-                  </p>
+              {(opportunity.startTime ||
+                opportunity.endTime ||
+                opportunity.time ||
+                opportunity.eventTime) && (
+                <p>
+                  🕒 <strong>Time:</strong> {getEventTime(opportunity)}
+                </p>
+              )}
 
-                  {notification.createdAt && (
-                    <small className="notification-date">
-                      {new Date(
-                        notification.createdAt
-                      ).toLocaleString()}
-                    </small>
-                  )}
-                </div>
-              </div>
-            )
-          )}
+              <p>{opportunity.location || ""}</p>
+
+              {opportunity.applicationLink && (
+                <a
+                  href={opportunity.applicationLink}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Apply Now
+                </a>
+              )}
+            </div>
+          ))}
         </div>
       )}
-    </section>
+    </>
   );
 
-  // ------------------------------------
-  // ACCOUNT
-  // ------------------------------------
+  const renderEvents = () => (
+    <>
+      <h2>Events</h2>
+      <p>
+        Register for upcoming events, cancel your registration before
+        the event ends, and submit feedback after the event ends.
+      </p>
+
+      {events.length === 0 ? (
+        <p>No events are available right now.</p>
+      ) : (
+        <div className="events-grid">
+          {events.map((event) => {
+            const eventId = getEventId(event);
+            const timing = getEventTiming(event, now);
+            const eventEnded = isEventEnded(event);
+            const isRegistered = registeredEventIds.has(String(eventId));
+            const isBusy = busyEventId === String(eventId);
+            const hasSubmittedFeedback =
+              submittedFeedbackIds.has(String(eventId));
+            const isLoadingThisFeedback =
+              loadingFeedbackForm &&
+              loadingFeedbackEventId === String(eventId);
+
+            return (
+              <div className="event-card" key={eventId}>
+                <h3>{event.title || event.name || "Untitled Event"}</h3>
+                <p>📅 <strong>Date:</strong> {timing.dateText}</p>
+                <p>🕒 <strong>Time:</strong> {timing.timeText}</p>
+                <p>
+                  📍 <strong>Location:</strong>{" "}
+                  {event.location || "Not specified"}
+                </p>
+                <p>{event.description || "No description available."}</p>
+
+                {!eventEnded && isRegistered && (
+                  <div className="event-registration-actions">
+                    <p className="registered-status">✓ Registered</p>
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() =>
+                        handleEventRegistration(event, "cancel")
+                      }
+                    >
+                      {isBusy ? "Please wait..." : "Cancel Registration"}
+                    </button>
+                  </div>
+                )}
+
+                {!eventEnded && !isRegistered && (
+                  <button
+                    type="button"
+                    disabled={isBusy}
+                    onClick={() =>
+                      handleEventRegistration(event, "register")
+                    }
+                  >
+                    {isBusy ? "Please wait..." : "Register for Event"}
+                  </button>
+                )}
+
+                {eventEnded && (
+                  <div className="event-ended">
+                    <strong>Event Ended</strong>
+                  </div>
+                )}
+
+                {/* Feedback option remains visible for registered students. */}
+                {isRegistered && (
+                  <div className="event-feedback-section">
+                    <p>You were registered for this event.</p>
+
+                    {hasSubmittedFeedback ? (
+                      <p className="registered-status">
+                        ✓ Feedback Submitted
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isLoadingThisFeedback || loadingFeedbackForm}
+                        onClick={() => openFeedbackForm(event)}
+                      >
+                        {isLoadingThisFeedback
+                          ? "Loading Feedback Form..."
+                          : !eventEnded
+                            ? "Feedback Available After Event"
+                            : "Give Feedback"}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {feedbackEvent && feedbackForm && (
+        <div className="feedback-modal-overlay">
+          <div className="feedback-modal">
+            <h3>{feedbackForm.title || "Event Feedback"}</h3>
+            <p>{feedbackEvent.title || feedbackEvent.name || "Event"}</p>
+
+            {feedbackForm.description && <p>{feedbackForm.description}</p>}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitEventFeedback(feedbackEvent);
+              }}
+            >
+              {feedbackForm.questions.map((question, index) => {
+                const questionId = String(question._id || question.id || "");
+                const isRating =
+                  String(question.type).toLowerCase() === "rating";
+
+                return (
+                  <div
+                    className="feedback-question"
+                    key={questionId || index}
+                  >
+                    <label htmlFor={`feedback-${questionId}`}>
+                      {question.question}
+                      {question.required !== false ? " *" : ""}
+                    </label>
+
+                    {isRating ? (
+                      <select
+                        id={`feedback-${questionId}`}
+                        value={feedbackAnswers[questionId] ?? ""}
+                        onChange={(e) =>
+                          setFeedbackAnswers((previous) => ({
+                            ...previous,
+                            [questionId]: e.target.value,
+                          }))
+                        }
+                        required={question.required !== false}
+                      >
+                        <option value="">Select a rating</option>
+                        <option value="5">5 - Excellent</option>
+                        <option value="4">4 - Very Good</option>
+                        <option value="3">3 - Good</option>
+                        <option value="2">2 - Fair</option>
+                        <option value="1">1 - Poor</option>
+                      </select>
+                    ) : (
+                      <textarea
+                        id={`feedback-${questionId}`}
+                        value={feedbackAnswers[questionId] ?? ""}
+                        onChange={(e) =>
+                          setFeedbackAnswers((previous) => ({
+                            ...previous,
+                            [questionId]: e.target.value,
+                          }))
+                        }
+                        placeholder="Enter your answer..."
+                        required={question.required !== false}
+                        rows={3}
+                        maxLength={5000}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+
+              <button type="submit" disabled={submittingFeedback}>
+                {submittingFeedback ? "Submitting..." : "Submit Feedback"}
+              </button>
+
+              <button
+                type="button"
+                disabled={submittingFeedback}
+                onClick={() => {
+                  setFeedbackEvent(null);
+                  setFeedbackForm(null);
+                  setFeedbackAnswers({});
+                }}
+              >
+                Close
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  const renderNotifications = () => (
+    <>
+      <h2>Notifications</h2>
+      {notifications.length === 0 ? (
+        <p>You have no notifications.</p>
+      ) : (
+        <div className="notifications-list">
+          {notifications.map((notification, index) => (
+            <div
+              className="notification-card"
+              key={notification._id || notification.id || index}
+            >
+              <h3>
+                {notification.title || notification.type || "Notification"}
+              </h3>
+              <p>
+                {notification.message ||
+                  notification.description ||
+                  "You have a new notification."}
+              </p>
+              {notification.createdAt && (
+                <small>
+                  {new Date(notification.createdAt).toLocaleString("en-IN")}
+                </small>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
   const renderAccount = () => (
-    <section className="simple-page">
-      <div className="page-title-area">
-        <span className="section-label">
-          ACCOUNT
-        </span>
-
-        <h1>Account</h1>
-
-        <p>
-          Manage your ReConnect account.
-        </p>
-      </div>
-
-      <div className="account-card">
-        <div className="account-avatar">
-          {user.fullName
-            ?.charAt(0)
-            .toUpperCase()}
-        </div>
-
-        <div>
-          <h2>{user.fullName}</h2>
-
-          <p>{user.email}</p>
-
-          <span className="role-badge">
-            Student
-          </span>
-        </div>
-
-        <button
-          type="button"
-          className="logout-btn account-logout"
-          onClick={logout}
-        >
-          Logout
-        </button>
-      </div>
-    </section>
+    <>
+      <h2>Account</h2>
+      <p><strong>Name:</strong> {user?.fullName || user?.name || "Student"}</p>
+      <p><strong>Email:</strong> {user?.email || "Not available"}</p>
+      <p><strong>Role:</strong> {user?.role || "Student"}</p>
+      <button type="button" onClick={logout}>Logout</button>
+    </>
   );
 
   const renderContent = () => {
     switch (activeSection) {
+      case "Dashboard":
+        return renderDashboard();
       case "My Profile":
         return renderProfile();
-
       case "Search Alumni":
         return renderSearchAlumni();
-
       case "Mentorship":
         return renderMentorship();
-
       case "Opportunities":
         return renderOpportunities();
-
       case "Events":
         return renderEvents();
-
       case "Notifications":
         return renderNotifications();
-
       case "Account":
         return renderAccount();
-
       default:
         return renderDashboard();
     }
   };
 
-  const menuItems = [
-    {
-      name: "Dashboard",
-      icon: "⌂"
-    },
-    {
-      name: "My Profile",
-      icon: "◎"
-    },
-    {
-      name: "Search Alumni",
-      icon: "⌕"
-    },
-    {
-      name: "Mentorship",
-      icon: "♧"
-    },
-    {
-      name: "Opportunities",
-      icon: "▣"
-    },
-    {
-      name: "Events",
-      icon: "◫"
-    },
-    {
-      name: "Notifications",
-      icon: "♢"
-    },
-    {
-      name: "Account",
-      icon: "◉"
-    }
-  ];
+  if (loading) {
+    return (
+      <div className="student-dashboard">
+        <p>Loading student dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="student-dashboard">
-      <aside className="student-sidebar">
-        <div className="brand">
-          <div className="brand-mark">
-            R
-          </div>
-
-          <div>
-            <strong>
-              ReConnect
-            </strong>
-
-            <span>
-              Student Portal
-            </span>
-          </div>
+      <aside className="dashboard-sidebar">
+        <div className="sidebar-brand">
+          <h2>ReConnect</h2>
+          <p>Student Portal</p>
         </div>
 
-        <div className="sidebar-profile">
-          <div className="avatar">
-            {user.fullName
-              ?.charAt(0)
-              .toUpperCase()}
-          </div>
-
-          <div>
-            <strong>
-              {user.fullName}
-            </strong>
-
-            <span>
-              Student
-            </span>
-          </div>
-        </div>
-
-        <div className="menu-title">
-          MENU
-        </div>
-
-        <nav className="sidebar-menu">
+        <nav>
           {menuItems.map((item) => (
             <button
               type="button"
-              key={item.name}
-              className={`menu-item ${
-                activeSection === item.name
-                  ? "active"
-                  : ""
-              }`}
-              onClick={() =>
-                setActiveSection(
-                  item.name
-                )
+              key={item}
+              className={
+                activeSection === item
+                  ? "sidebar-menu-item active"
+                  : "sidebar-menu-item"
               }
+              onClick={() => {
+                setActiveSection(item);
+                setMessage("");
+                setError("");
+              }}
             >
-              <span className="menu-icon">
-                {item.icon}
-              </span>
-
-              <span>
-                {item.name}
-              </span>
-
-              {item.name ===
-                "Notifications" &&
-                notifications.length >
-                  0 && (
-                  <span className="notification-count">
-                    {notifications.length}
-                  </span>
-                )}
+              <span className="menu-item-icon">{{"Dashboard":"⌂","My Profile":"◉","Search Alumni":"♧","Mentorship":"♡","Opportunities":"✦","Events":"▦","Notifications":"♢","Account":"⚙"}[item]}</span>
+              <span>{item}</span>
+              {activeSection === item && <span className="menu-active-dot" />}
             </button>
           ))}
         </nav>
 
-        <div className="sidebar-bottom">
-          <button
-            type="button"
-            className="logout-btn"
-            onClick={logout}
-          >
-            ↪ Logout
-          </button>
-        </div>
+        <button type="button" className="sidebar-logout" onClick={logout}>
+          Logout
+        </button>
       </aside>
 
-      <main className="student-main">
-        <header className="student-topbar">
-          <div className="breadcrumb">
-            <span>
-              ReConnect
-            </span>
-
-            <b>/</b>
-
-            <strong>
-              {activeSection}
-            </strong>
+      <main className="dashboard-main">
+        <header className="dashboard-header">
+          <div>
+            <h1>{activeSection}</h1>
+            <p>Welcome, {user?.fullName || user?.name || "Student"}</p>
           </div>
 
-          <div className="topbar-user">
-            <div className="topbar-avatar">
-              {user.fullName
-                ?.charAt(0)
-                .toUpperCase()}
-            </div>
-
-            <div>
-              <strong>
-                {user.fullName}
-              </strong>
-
-              <span>
-                Student
-              </span>
-            </div>
-          </div>
+          <button type="button" onClick={loadAllData} disabled={loading}>
+            {loading ? "Refreshing..." : "Refresh"}
+          </button>
         </header>
 
-        <div className="page-content">
-          {loading &&
-          activeSection ===
-            "Dashboard" ? (
-            <div className="loading-box">
-              Loading...
-            </div>
-          ) : (
-            renderContent()
-          )}
-        </div>
+        {message && (
+          <div className="dashboard-message success" role="status">
+            {message}
+          </div>
+        )}
+
+        {error && (
+          <div className="dashboard-message error" role="alert">
+            {error}
+          </div>
+        )}
+
+        <section className="dashboard-content">
+          {renderContent()}
+        </section>
       </main>
     </div>
   );
 }
-
-export default StudentDashboard;

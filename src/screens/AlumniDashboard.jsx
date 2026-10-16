@@ -1,264 +1,200 @@
-
 import React, { useEffect, useState } from "react";
 
 const API = "http://localhost:5000/api";
 
-const initialProfile = {
-  phone: "",
-  college: "",
-  branch: "",
-  year: "",
-  skills: "",
-  bio: ""
-};
-
-const initialEvent = {
-  title: "",
-  description: "",
-  date: "",
-  time: "",
-  location: ""
-};
-
-const initialOpportunity = {
-  title: "",
-  company: "",
-  type: "Job",
-  description: "",
-  location: "",
-  link: ""
-};
-
-const navItems = [
-  { name: "Dashboard", icon: "⌂" },
-  { name: "My Profile", icon: "♙" },
-  { name: "Mentorship", icon: "♧" },
-  { name: "Opportunities", icon: "▣" },
-  { name: "Events", icon: "▦" },
-  { name: "Notifications", icon: "♢" },
-  { name: "Account", icon: "⚙" }
-];
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#f5f7fc",
-    color: "#18243b",
-    fontFamily: "Inter, Arial, sans-serif"
-  },
-  sidebar: {
-    position: "fixed",
-    inset: "0 auto 0 0",
-    width: "250px",
-    background: "#fff",
-    borderRight: "1px solid #e8edf5",
-    padding: "24px 16px",
-    display: "flex",
-    flexDirection: "column",
-    zIndex: 5,
-    boxSizing: "border-box"
-  },
-  brand: {
-    display: "flex",
-    alignItems: "center",
-    gap: "11px",
-    padding: "5px 10px 28px"
-  },
-  brandIcon: {
-    width: "42px",
-    height: "42px",
-    borderRadius: "14px",
-    display: "grid",
-    placeItems: "center",
-    color: "#fff",
-    fontSize: "23px",
-    fontWeight: 800,
-    background: "linear-gradient(135deg,#3978f6,#7956e8)"
-  },
-  brandName: {
-    fontSize: "21px",
-    fontWeight: 800,
-    letterSpacing: "-.5px",
-    color: "#1e2b48"
-  },
-  navLabel: {
-    color: "#9aa5b8",
-    fontSize: "11px",
-    fontWeight: 800,
-    letterSpacing: "1.2px",
-    padding: "0 12px",
-    margin: "5px 0 12px"
-  },
-  main: {
-    marginLeft: "250px",
-    padding: "28px 34px 50px",
-    maxWidth: "1600px",
-    boxSizing: "border-box"
-  },
-  topbar: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "16px",
-    marginBottom: "24px",
-    flexWrap: "wrap"
-  },
-  card: {
-    background: "#fff",
-    border: "1px solid #edf0f6",
-    borderRadius: "18px",
-    padding: "22px",
-    boxShadow: "0 5px 22px rgba(27,46,89,.045)",
-    marginBottom: "20px",
-    minWidth: 0
-  },
-  heading: {
-    fontSize: "23px",
-    fontWeight: 800,
-    letterSpacing: "-.5px",
-    margin: "0 0 7px",
-    color: "#1c2944"
-  },
-  muted: {
-    color: "#7b879b",
-    fontSize: "14px",
-    lineHeight: 1.65
-  },
-  input: {
-    width: "100%",
-    padding: "12px 14px",
-    border: "1px solid #dfe5ef",
-    borderRadius: "10px",
-    background: "#fff",
-    color: "#24324b",
-    fontSize: "14px",
-    outline: "none",
-    boxSizing: "border-box",
-    marginTop: "7px"
-  },
-  label: {
-    display: "block",
-    color: "#485671",
-    fontWeight: 700,
-    fontSize: "13px",
-    marginBottom: "15px"
-  },
-  primary: {
-    border: 0,
-    borderRadius: "10px",
-    padding: "12px 18px",
-    background: "linear-gradient(135deg,#3978f6,#7257e8)",
-    color: "#fff",
-    fontSize: "14px",
-    fontWeight: 700,
-    cursor: "pointer",
-    boxShadow: "0 5px 12px rgba(75,101,230,.18)"
-  },
-  secondary: {
-    border: "1px solid #dce5f4",
-    borderRadius: "10px",
-    padding: "10px 15px",
-    background: "#f7f9ff",
-    color: "#4263b4",
-    fontSize: "13px",
-    fontWeight: 700,
-    cursor: "pointer"
-  },
-  danger: {
-    border: "1px solid #ffd9df",
-    borderRadius: "10px",
-    padding: "10px 15px",
-    background: "#fff3f4",
-    color: "#c43c52",
-    fontSize: "13px",
-    fontWeight: 700,
-    cursor: "pointer"
-  }
-};
-
-function getUserId(currentUser) {
-  return currentUser?._id || currentUser?.id || currentUser?.userId || null;
-}
-
-function getList(data, key) {
-  return Array.isArray(data) ? data : data?.[key] || [];
-}
-
-function formatDate(date) {
-  if (!date) return "Date not specified";
-  const parsed = new Date(date + "T00:00:00");
-  return Number.isNaN(parsed.getTime())
-    ? date
-    : parsed.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric"
-      });
-}
-
-function Field({ label, name, value, onChange, placeholder, type = "text", required = false }) {
-  return (
-    <label style={styles.label}>
-      {label}
-      <input
-        style={styles.input}
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder || label}
-        required={required}
-      />
-    </label>
-  );
-}
-
-function EmptyState({ title, description }) {
-  return (
-    <div style={{ ...styles.card, textAlign: "center", padding: "38px 20px" }}>
-      <div style={{ fontSize: "32px", marginBottom: "10px" }}>✦</div>
-      <h3 style={{ margin: "0 0 7px", color: "#273653" }}>{title}</h3>
-      <p style={{ ...styles.muted, margin: 0 }}>{description}</p>
-    </div>
-  );
-}
-
 function AlumniDashboard() {
   const [user, setUser] = useState(null);
   const [activeSection, setActiveSection] = useState("Dashboard");
-  const [profile, setProfile] = useState(initialProfile);
   const [events, setEvents] = useState([]);
   const [mentorships, setMentorships] = useState([]);
   const [opportunities, setOpportunities] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [eventForm, setEventForm] = useState(initialEvent);
-  const [opportunityForm, setOpportunityForm] = useState(initialOpportunity);
+  const [reports, setReports] = useState([]);
+  const [studentFeedback, setStudentFeedback] = useState([]);
+  const [reportSummary, setReportSummary] = useState({});
+  const [reportLoading, setReportLoading] = useState(false);
+  const [feedbackForms, setFeedbackForms] = useState({});
+  const [feedbackFormLoading, setFeedbackFormLoading] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState("");
+  const [feedbackQuestion, setFeedbackQuestion] = useState("");
+  const [feedbackQuestionType, setFeedbackQuestionType] = useState("rating");
+  const [feedbackFormTitle, setFeedbackFormTitle] = useState("");
+  const [feedbackFormDescription, setFeedbackFormDescription] = useState("");
+
+  const [profile, setProfile] = useState({
+    phone: "",
+    college: "",
+    branch: "",
+    year: "",
+    skills: "",
+    bio: ""
+  });
+
+  const [eventForm, setEventForm] = useState({
+    title: "",
+    description: "",
+    date: "",
+    time: "",
+    endDate: "",
+    endTime: "",
+    location: ""
+  });
+
+  const [opportunityForm, setOpportunityForm] = useState({
+    title: "",
+    company: "",
+    type: "Job",
+    description: "",
+    location: "",
+    link: ""
+  });
+
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("success");
   const [loading, setLoading] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
-  const [mobileMenu, setMobileMenu] = useState(false);
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (!savedUser) {
-      window.location.href = "/login";
-      return;
+  const getUserId = (currentUser) =>
+    currentUser?._id || currentUser?.id || currentUser?.userId || null;
+
+  const getId = (value) => {
+    if (value && typeof value === "object") {
+      return value._id || value.id || "";
+    }
+    return value || "";
+  };
+
+  const showMessage = (text, type = "success") => {
+    setMessage(text);
+    setMessageType(type);
+  };
+
+  const readResponse = async (response) => {
+    return response.json().catch(() => ({}));
+  };
+
+  const formatDate = (value) => {
+    if (!value) return "Date not specified";
+
+    const text = String(value);
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (match) {
+      return new Date(
+        Number(match[1]),
+        Number(match[2]) - 1,
+        Number(match[3])
+      ).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
     }
 
+    const date = new Date(value);
+
+    return Number.isNaN(date.getTime())
+      ? text
+      : date.toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "long",
+          year: "numeric"
+        });
+  };
+
+  const formatTime = (value) => {
+    if (!value) return "Time not specified";
+
+    const match = String(value)
+      .trim()
+      .match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+
+    if (match) {
+      return new Date(
+        2000,
+        0,
+        1,
+        Number(match[1]),
+        Number(match[2])
+      ).toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+
+    return String(value);
+  };
+
+  const getEventEnd = (event) => {
+    const dateValue = event?.endDate || event?.date;
+    const timeValue = event?.endTime || event?.time || "23:59";
+
+    if (!dateValue) return null;
+
+    const dateMatch = String(dateValue)
+      .slice(0, 10)
+      .match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (!dateMatch) return null;
+
+    const timeMatch = String(timeValue)
+      .trim()
+      .match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+
+    let hours = 23;
+    let minutes = 59;
+
+    if (timeMatch) {
+      hours = Number(timeMatch[1]);
+      minutes = Number(timeMatch[2]);
+
+      const meridiem = timeMatch[3]?.toUpperCase();
+
+      if (meridiem === "PM" && hours !== 12) hours += 12;
+      if (meridiem === "AM" && hours === 12) hours = 0;
+    }
+
+    return new Date(
+      Number(dateMatch[1]),
+      Number(dateMatch[2]) - 1,
+      Number(dateMatch[3]),
+      hours,
+      minutes
+    );
+  };
+
+  const isEventEnded = (event) => {
+    const end = getEventEnd(event);
+    return end ? Date.now() >= end.getTime() : false;
+  };
+
+  const getOwnEvents = (eventList = events) => {
+    const currentId = String(getUserId(user) || "");
+
+    return eventList.filter(
+      (event) => String(getId(event.organizer)) === currentId
+    );
+  };
+
+  // Authenticate the logged-in user.
+  useEffect(() => {
     try {
-      const parsed = JSON.parse(savedUser);
-      if (!getUserId(parsed)) {
+      const savedUser = localStorage.getItem("user");
+
+      if (!savedUser) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const parsedUser = JSON.parse(savedUser);
+
+      if (!getUserId(parsedUser) || parsedUser.role !== "Alumni") {
         localStorage.removeItem("user");
         window.location.href = "/login";
         return;
       }
-      if (parsed.role && parsed.role !== "Alumni") {
-        window.location.href =
-          parsed.role === "Admin" ? "/admin-dashboard" : "/student-dashboard";
-        return;
-      }
-      setUser(parsed);
+
+      setUser(parsedUser);
     } catch (error) {
       console.error("User data error:", error);
       localStorage.removeItem("user");
@@ -268,188 +204,170 @@ function AlumniDashboard() {
 
   useEffect(() => {
     if (!user) return;
+
     const id = getUserId(user);
+
     loadProfile(id);
     loadMentorships(id);
     loadNotifications(id);
     loadEvents();
     loadOpportunities();
+    loadEventReports(id);
   }, [user]);
 
-  const showMessage = (text, type = "success") => {
-    setMessage(text);
-    setMessageType(type);
-  };
-
-  async function loadProfile(userId) {
+  // PROFILE
+  const loadProfile = async (id) => {
     try {
-      const response = await fetch(`${API}/profile/${userId}`);
+      const response = await fetch(`${API}/profile/${id}`);
       if (!response.ok) return;
-      const data = await response.json();
-      const p = data.profile || data;
+
+      const data = await readResponse(response);
+      const item = data.profile || data;
+
       setProfile({
-        phone: p.phone || "",
-        college: p.college || "",
-        branch: p.branch || "",
-        year: p.year || "",
-        skills: p.skills || "",
-        bio: p.bio || ""
+        phone: item.phone || "",
+        college: item.college || "",
+        branch: item.branch || "",
+        year: item.year || "",
+        skills: Array.isArray(item.skills)
+          ? item.skills.join(", ")
+          : item.skills || "",
+        bio: item.bio || ""
       });
     } catch (error) {
       console.error("Profile loading error:", error);
     }
-  }
+  };
 
-  async function loadMentorships(userId) {
-    try {
-      const response = await fetch(`${API}/mentorship/alumni/${userId}`);
-      if (!response.ok) return;
-      setMentorships(getList(await response.json(), "mentorships"));
-    } catch (error) {
-      console.error("Mentorship loading error:", error);
-    }
-  }
+  const handleProfileChange = (event) => {
+    setProfile((old) => ({
+      ...old,
+      [event.target.name]: event.target.value
+    }));
+  };
 
-  async function loadNotifications(userId) {
-    try {
-      setNotificationLoading(true);
-      const response = await fetch(`${API}/notifications/${userId}`);
-      if (!response.ok) {
-        setNotifications([]);
-        return;
-      }
-      setNotifications(getList(await response.json(), "notifications"));
-    } catch (error) {
-      console.error("Notification loading error:", error);
-      setNotifications([]);
-    } finally {
-      setNotificationLoading(false);
-    }
-  }
-
-  async function loadEvents() {
-    try {
-      const response = await fetch(`${API}/events`);
-      if (!response.ok) return;
-      setEvents(getList(await response.json(), "events"));
-    } catch (error) {
-      console.error("Event loading error:", error);
-    }
-  }
-
-  async function loadOpportunities() {
-    try {
-      const response = await fetch(`${API}/opportunities`);
-      if (!response.ok) return;
-      setOpportunities(getList(await response.json(), "opportunities"));
-    } catch (error) {
-      console.error("Opportunity loading error:", error);
-    }
-  }
-
-  function handleProfileChange(event) {
-    setProfile((old) => ({ ...old, [event.target.name]: event.target.value }));
-  }
-
-  async function handleSaveProfile(event) {
+  const handleSaveProfile = async (event) => {
     event.preventDefault();
-    const userId = getUserId(user);
-    if (!userId) return showMessage("Please login again.", "error");
 
     try {
       setLoading(true);
+      setMessage("");
+
       const response = await fetch(`${API}/profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, ...profile })
+        body: JSON.stringify({
+          userId: getUserId(user),
+          ...profile
+        })
       });
-      const data = await response.json();
+
+      const data = await readResponse(response);
+
       if (!response.ok) {
-        return showMessage(data.message || "Unable to save profile.", "error");
+        showMessage(data.message || "Unable to save profile.", "error");
+        return;
       }
-      showMessage("Your profile has been saved.");
-      await loadProfile(userId);
+
+      showMessage("Profile saved successfully.");
+      await loadProfile(getUserId(user));
     } catch (error) {
-      console.error("Profile save error:", error);
+      console.error("Save profile error:", error);
       showMessage("Cannot connect to the server.", "error");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function updateMentorship(mentorshipId, status) {
+  // MENTORSHIP
+  const loadMentorships = async (id) => {
+    try {
+      const response = await fetch(`${API}/mentorship/alumni/${id}`);
+      if (!response.ok) return;
+
+      const data = await readResponse(response);
+
+      setMentorships(
+        Array.isArray(data) ? data : data.mentorships || []
+      );
+    } catch (error) {
+      console.error("Mentorship loading error:", error);
+    }
+  };
+
+  const updateMentorship = async (mentorshipId, status) => {
     try {
       setLoading(true);
+      setMessage("");
+
       const response = await fetch(`${API}/mentorship/${mentorshipId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
       });
-      const data = await response.json();
+
+      const data = await readResponse(response);
+
       if (!response.ok) {
-        return showMessage(data.message || "Unable to update request.", "error");
+        showMessage(data.message || "Unable to update mentorship.", "error");
+        return;
       }
+
       showMessage(`Mentorship request ${status.toLowerCase()}.`);
-      const id = getUserId(user);
-      await loadMentorships(id);
-      await loadNotifications(id);
+
+      await Promise.all([
+        loadMentorships(getUserId(user)),
+        loadNotifications(getUserId(user))
+      ]);
     } catch (error) {
       console.error("Mentorship update error:", error);
       showMessage("Cannot connect to the server.", "error");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  function handleEventChange(event) {
-    setEventForm((old) => ({ ...old, [event.target.name]: event.target.value }));
-  }
-
-  async function handleHostEvent(event) {
-    event.preventDefault();
-    const userId = getUserId(user);
-    if (!userId) return showMessage("Please login again.", "error");
-
+  // OPPORTUNITIES
+  const loadOpportunities = async () => {
     try {
-      setLoading(true);
-      const response = await fetch(`${API}/events`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...eventForm,
-          title: eventForm.title.trim(),
-          description: eventForm.description.trim(),
-          location: eventForm.location.trim(),
-          organizer: userId
-        })
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        return showMessage(data.message || "Unable to host event.", "error");
-      }
-      showMessage("Event hosted successfully.");
-      setEventForm(initialEvent);
-      await loadEvents();
-      await loadNotifications(userId);
+      const response = await fetch(`${API}/opportunities`);
+      if (!response.ok) return;
+
+      const data = await readResponse(response);
+
+      setOpportunities(
+        Array.isArray(data) ? data : data.opportunities || []
+      );
     } catch (error) {
-      console.error("Host event error:", error);
-      showMessage("Cannot connect to the server.", "error");
-    } finally {
-      setLoading(false);
+      console.error("Opportunity loading error:", error);
     }
-  }
+  };
 
-  function handleOpportunityChange(event) {
-    setOpportunityForm((old) => ({ ...old, [event.target.name]: event.target.value }));
-  }
+  const handleOpportunityChange = (event) => {
+    setOpportunityForm((old) => ({
+      ...old,
+      [event.target.name]: event.target.value
+    }));
+  };
 
-  async function handleCreateOpportunity(event) {
+  const handleCreateOpportunity = async (event) => {
     event.preventDefault();
-    const userId = getUserId(user);
-    if (!userId) return showMessage("Please login again.", "error");
+
+    if (
+      !opportunityForm.title.trim() ||
+      !opportunityForm.company.trim()
+    ) {
+      showMessage(
+        "Opportunity title and company name are required.",
+        "error"
+      );
+      return;
+    }
 
     try {
       setLoading(true);
+      setMessage("");
+
       const response = await fetch(`${API}/opportunities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -457,612 +375,1713 @@ function AlumniDashboard() {
           ...opportunityForm,
           title: opportunityForm.title.trim(),
           company: opportunityForm.company.trim(),
-          description: opportunityForm.description.trim(),
-          location: opportunityForm.location.trim(),
-          link: opportunityForm.link.trim(),
-          postedBy: userId
+          postedBy: getUserId(user)
         })
       });
-      const data = await response.json();
+
+      const data = await readResponse(response);
+
       if (!response.ok) {
-        return showMessage(data.message || "Unable to post opportunity.", "error");
+        showMessage(
+          data.message || "Unable to create opportunity.",
+          "error"
+        );
+        return;
       }
+
       showMessage("Opportunity posted successfully.");
-      setOpportunityForm(initialOpportunity);
-      await loadOpportunities();
-      await loadNotifications(userId);
+
+      setOpportunityForm({
+        title: "",
+        company: "",
+        type: "Job",
+        description: "",
+        location: "",
+        link: ""
+      });
+
+      await Promise.all([
+        loadOpportunities(),
+        loadNotifications(getUserId(user))
+      ]);
     } catch (error) {
       console.error("Create opportunity error:", error);
       showMessage("Cannot connect to the server.", "error");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  function openSection(section) {
-    setActiveSection(section);
+  // EVENTS
+  const loadEvents = async () => {
+    try {
+      const response = await fetch(`${API}/events`);
+      if (!response.ok) return;
+
+      const data = await readResponse(response);
+      const loadedEvents = Array.isArray(data)
+        ? data
+        : data.events || [];
+
+      setEvents(loadedEvents);
+
+      const currentId = String(getUserId(user) || "");
+
+      const ownEvents = loadedEvents.filter(
+        (event) => String(getId(event.organizer)) === currentId
+      );
+
+      // Load forms independently. Never update the currently selected
+      // form title unless the user selects that event.
+      await Promise.all(
+        ownEvents.map((event) =>
+          loadFeedbackForm(event._id || event.id, false)
+        )
+      );
+    } catch (error) {
+      console.error("Event loading error:", error);
+    }
+  };
+
+  const handleEventChange = (event) => {
+    setEventForm((old) => ({
+      ...old,
+      [event.target.name]: event.target.value
+    }));
+  };
+
+  const handleHostEvent = async (event) => {
+    event.preventDefault();
+
+    if (
+      !eventForm.title.trim() ||
+      !eventForm.date ||
+      !eventForm.time ||
+      !eventForm.endDate ||
+      !eventForm.endTime
+    ) {
+      showMessage(
+        "Complete all required event date and time fields.",
+        "error"
+      );
+      return;
+    }
+
+    const start = new Date(`${eventForm.date}T${eventForm.time}`);
+    const end = new Date(`${eventForm.endDate}T${eventForm.endTime}`);
+
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      end <= start
+    ) {
+      showMessage("The event end must be after its start.", "error");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setMessage("");
+
+      const response = await fetch(`${API}/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...eventForm,
+          title: eventForm.title.trim(),
+          organizer: getUserId(user)
+        })
+      });
+
+      const data = await readResponse(response);
+
+      if (!response.ok) {
+        showMessage(data.message || "Unable to create event.", "error");
+        return;
+      }
+
+      showMessage("Event hosted successfully.");
+
+      setEventForm({
+        title: "",
+        description: "",
+        date: "",
+        time: "",
+        endDate: "",
+        endTime: "",
+        location: ""
+      });
+
+      await Promise.all([
+        loadEvents(),
+        loadEventReports(getUserId(user)),
+        loadNotifications(getUserId(user))
+      ]);
+    } catch (error) {
+      console.error("Host event error:", error);
+      showMessage("Cannot connect to the server.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // FEEDBACK FORMS
+  const loadFeedbackForm = async (eventId, updateEditor = true) => {
+    if (!eventId || !user) return;
+
+    try {
+      const response = await fetch(
+        `${API}/events/${eventId}/feedback-form?organizerId=${encodeURIComponent(
+          getUserId(user)
+        )}`
+      );
+
+      const data = await readResponse(response);
+
+      if (response.status === 404) {
+        setFeedbackForms((old) => ({
+          ...old,
+          [eventId]: old[eventId] || null
+        }));
+
+        if (updateEditor && selectedEventId === eventId) {
+          const existing = feedbackForms[eventId];
+
+          setFeedbackFormTitle(existing?.title || "");
+          setFeedbackFormDescription(existing?.description || "");
+        }
+
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Unable to load feedback form."
+        );
+      }
+
+      const form = data.form || data.feedbackForm || data;
+
+      setFeedbackForms((old) => ({
+        ...old,
+        [eventId]: form
+      }));
+
+      // Only update the editor for the currently selected event.
+      if (updateEditor && selectedEventId === eventId) {
+        setFeedbackFormTitle(form.title || "");
+        setFeedbackFormDescription(form.description || "");
+      }
+    } catch (error) {
+      console.error("Feedback form loading error:", error);
+    }
+  };
+
+  const selectFeedbackEvent = async (eventId) => {
+    setSelectedEventId(eventId);
+    setFeedbackQuestion("");
     setMessage("");
-    setMobileMenu(false);
-    const id = getUserId(user);
-    if (!id) return;
-    if (section === "My Profile") loadProfile(id);
-    if (section === "Mentorship") loadMentorships(id);
-    if (section === "Notifications") loadNotifications(id);
-    if (section === "Events") loadEvents();
-    if (section === "Opportunities") loadOpportunities();
-  }
 
-  function handleLogout() {
+    const existing = feedbackForms[eventId];
+
+    setFeedbackFormTitle(existing?.title || "");
+    setFeedbackFormDescription(existing?.description || "");
+
+    if (eventId) {
+      await loadFeedbackForm(eventId, false);
+
+      // Read the latest form after loading. This prevents one event's
+      // form details from being used when editing a different event.
+      setFeedbackForms((old) => {
+        const form = old[eventId];
+
+        setFeedbackFormTitle(form?.title || "");
+        setFeedbackFormDescription(form?.description || "");
+
+        return old;
+      });
+    }
+  };
+
+  const saveFeedbackForm = async (event) => {
+    event.preventDefault();
+
+    if (!selectedEventId) {
+      showMessage("Select an event first.", "error");
+      return;
+    }
+
+    if (!feedbackFormTitle.trim()) {
+      showMessage("Enter a feedback form title.", "error");
+      return;
+    }
+
+    const existingForm = feedbackForms[selectedEventId];
+
+    if (existingForm?.status === "Published") {
+      showMessage("This feedback form is already published.", "error");
+      return;
+    }
+
+    const questions = existingForm?.questions || [];
+
+    if (questions.length === 0) {
+      showMessage("Add at least one feedback question.", "error");
+      return;
+    }
+
+    try {
+      setFeedbackFormLoading(true);
+      setMessage("");
+
+      const response = await fetch(
+        `${API}/events/${selectedEventId}/feedback-form`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            organizerId: getUserId(user),
+            title: feedbackFormTitle.trim(),
+            description: feedbackFormDescription.trim(),
+            questions: questions.map((question) => ({
+              question: question.question,
+              type: question.type,
+              required: question.required !== false
+            }))
+          })
+        }
+      );
+
+      const data = await readResponse(response);
+
+      if (!response.ok) {
+        showMessage(
+          data.message || "Unable to save feedback form.",
+          "error"
+        );
+        return;
+      }
+
+      const savedForm = data.form || data.feedbackForm || data;
+
+      setFeedbackForms((old) => ({
+        ...old,
+        [selectedEventId]: {
+          ...savedForm,
+          title: savedForm.title || feedbackFormTitle.trim(),
+          description:
+            savedForm.description ?? feedbackFormDescription.trim(),
+          questions: savedForm.questions || questions,
+          status: savedForm.status || "Draft"
+        }
+      }));
+
+      showMessage("Feedback form saved as a draft.");
+    } catch (error) {
+      console.error("Save feedback form error:", error);
+      showMessage("Cannot connect to the server.", "error");
+    } finally {
+      setFeedbackFormLoading(false);
+    }
+  };
+
+  const addFeedbackQuestion = () => {
+    if (!selectedEventId) {
+      showMessage("Select an event first.", "error");
+      return;
+    }
+
+    if (!feedbackQuestion.trim()) {
+      showMessage("Enter a question before adding it.", "error");
+      return;
+    }
+
+    const currentForm = feedbackForms[selectedEventId];
+
+    if (currentForm?.status === "Published") {
+      showMessage("Published forms cannot be edited.", "error");
+      return;
+    }
+
+    setFeedbackForms((old) => {
+      const form = old[selectedEventId] || {};
+
+      return {
+        ...old,
+        [selectedEventId]: {
+          ...form,
+          title: feedbackFormTitle,
+          description: feedbackFormDescription,
+          status: "Draft",
+          questions: [
+            ...(form.questions || []),
+            {
+              question: feedbackQuestion.trim(),
+              type: feedbackQuestionType,
+              required: true
+            }
+          ]
+        }
+      };
+    });
+
+    setFeedbackQuestion("");
+    showMessage("Question added. Save the form to keep your changes.");
+  };
+
+  const removeFeedbackQuestion = (index) => {
+    const currentForm = feedbackForms[selectedEventId];
+
+    if (!currentForm || currentForm.status === "Published") return;
+
+    setFeedbackForms((old) => ({
+      ...old,
+      [selectedEventId]: {
+        ...currentForm,
+        questions: currentForm.questions.filter((_, i) => i !== index)
+      }
+    }));
+  };
+
+  const publishFeedbackForm = async () => {
+    if (!selectedEventId) {
+      showMessage("Select an event first.", "error");
+      return;
+    }
+
+    const form = feedbackForms[selectedEventId];
+
+    if (!form || !form.questions?.length) {
+      showMessage(
+        "Save a feedback form with at least one question first.",
+        "error"
+      );
+      return;
+    }
+
+    try {
+      setFeedbackFormLoading(true);
+      setMessage("");
+
+      const response = await fetch(
+        `${API}/events/${selectedEventId}/feedback-form/publish`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            organizerId: getUserId(user)
+          })
+        }
+      );
+
+      const data = await readResponse(response);
+
+      if (!response.ok) {
+        showMessage(
+          data.message || "Unable to publish feedback form.",
+          "error"
+        );
+        return;
+      }
+
+      const publishedForm = data.form || data.feedbackForm || {};
+
+      setFeedbackForms((old) => ({
+        ...old,
+        [selectedEventId]: {
+          ...old[selectedEventId],
+          ...publishedForm,
+          status: publishedForm.status || "Published"
+        }
+      }));
+
+      showMessage("Feedback form published successfully.");
+    } catch (error) {
+      console.error("Publish feedback form error:", error);
+      showMessage("Cannot connect to the server.", "error");
+    } finally {
+      setFeedbackFormLoading(false);
+    }
+  };
+
+  // EVENT REPORTS
+  const loadEventReports = async (id) => {
+    if (!id) return;
+
+    try {
+      setReportLoading(true);
+
+      const response = await fetch(`${API}/alumni/${id}/reports`);
+      const data = await readResponse(response);
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Unable to load event reports."
+        );
+      }
+
+      const eventReports = Array.isArray(data.eventsHosted)
+        ? data.eventsHosted
+        : [];
+
+      setReports(eventReports);
+      setReportSummary(data.summary || {});
+
+      const allFeedback = eventReports.flatMap((report) => {
+        const event = report.event || {};
+        const eventId = String(event._id || event.id || "");
+
+        return (Array.isArray(report.feedback) ? report.feedback : []).map(
+          (feedback) => ({
+            ...feedback,
+            eventId,
+            eventTitle: event.title || "Untitled Event"
+          })
+        );
+      });
+
+      setStudentFeedback(allFeedback);
+    } catch (error) {
+      console.error("Event reports loading error:", error);
+      // Keep the previous report data on a network/server failure.
+      showMessage(
+        error.message || "Unable to load event reports.",
+        "error"
+      );
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  // NOTIFICATIONS
+  const loadNotifications = async (id) => {
+    if (!id) return;
+
+    try {
+      setNotificationLoading(true);
+
+      const response = await fetch(`${API}/notifications/${id}`);
+
+      if (!response.ok) {
+        console.error("Notification request failed:", response.status);
+        return;
+      }
+
+      const data = await readResponse(response);
+
+      setNotifications(
+        Array.isArray(data) ? data : data.notifications || []
+      );
+    } catch (error) {
+      console.error("Notification loading error:", error);
+    } finally {
+      setNotificationLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
     localStorage.removeItem("user");
     window.location.href = "/login";
-  }
+  };
+
+  const openSection = (section) => {
+    setMessage("");
+    setActiveSection(section);
+
+    const id = getUserId(user);
+    if (!id) return;
+
+    if (section === "My Profile") loadProfile(id);
+    if (section === "Mentorship") loadMentorships(id);
+    if (section === "Opportunities") loadOpportunities();
+    if (section === "Events" || section === "Feedback Forms") loadEvents();
+    if (section === "Event Reports") loadEventReports(id);
+    if (section === "Notifications") loadNotifications(id);
+  };
+
+  // STYLES
+  const pageStyle = {
+    minHeight: "100vh",
+    background: "#f5f7fb",
+    display: "flex"
+  };
+
+  const sidebarStyle = {
+    width: "240px",
+    background: "#1e293b",
+    color: "white",
+    padding: "25px 15px",
+    boxSizing: "border-box",
+    minHeight: "100vh",
+    position: "fixed",
+    left: 0,
+    top: 0,
+    overflowY: "auto"
+  };
+
+  const contentStyle = {
+    marginLeft: "240px",
+    width: "calc(100% - 240px)",
+    padding: "30px",
+    boxSizing: "border-box"
+  };
+
+  const cardStyle = {
+    background: "white",
+    padding: "25px",
+    borderRadius: "12px",
+    marginBottom: "20px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+  };
+
+  const inputStyle = {
+    width: "100%",
+    padding: "11px",
+    marginTop: "6px",
+    marginBottom: "12px",
+    border: "1px solid #d1d5db",
+    borderRadius: "6px",
+    boxSizing: "border-box",
+    fontSize: "14px"
+  };
+
+  const primaryButton = {
+    padding: "11px 20px",
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "14px"
+  };
+
+  const dangerButton = {
+    padding: "9px 15px",
+    background: "#dc3545",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer"
+  };
+
+  const sectionButtonStyle = (item) => ({
+    width: "100%",
+    padding: "12px",
+    marginBottom: "8px",
+    border: "none",
+    borderRadius: "6px",
+    textAlign: "left",
+    cursor: "pointer",
+    background: activeSection === item ? "#2563eb" : "transparent",
+    color: "white",
+    fontSize: "14px"
+  });
+
+  const ownEvents = getOwnEvents();
+
+  const totalFeedback = studentFeedback.length;
+
+  const ratings = studentFeedback
+    .map((item) => Number(item.rating))
+    .filter((rating) => Number.isFinite(rating) && rating >= 1 && rating <= 5);
+
+  const calculatedAverageRating = ratings.length
+    ? (
+        ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
+      ).toFixed(2)
+    : null;
+
+  const menuItems = [
+    "Dashboard",
+    "My Profile",
+    "Mentorship",
+    "Opportunities",
+    "Events",
+    "Feedback Forms",
+    "Event Reports",
+    "Notifications",
+    "Account"
+  ];
 
   if (!user) {
     return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: "#65738b" }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "20px"
+        }}
+      >
         Loading ReConnect...
       </div>
     );
   }
 
-  const pendingRequests = mentorships.filter((item) => item.status === "Pending").length;
-  const unreadNotifications = notifications.filter((item) => !item.read).length;
-
-  const statCards = [
-    { label: "Mentorship Requests", value: mentorships.length, icon: "♧", color: "#3978f6", bg: "#edf4ff" },
-    { label: "Opportunities", value: opportunities.length, icon: "▣", color: "#8b5cf6", bg: "#f3edff" },
-    { label: "Community Events", value: events.length, icon: "▦", color: "#0eaa88", bg: "#e9faf5" },
-    { label: "Notifications", value: unreadNotifications, icon: "♢", color: "#ed9a25", bg: "#fff5e5" }
-  ];
-
-  const navButton = (item) => (
-    <button
-      key={item.name}
-      type="button"
-      onClick={() => openSection(item.name)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "13px",
-        width: "100%",
-        padding: "12px 13px",
-        marginBottom: "5px",
-        border: 0,
-        borderRadius: "11px",
-        cursor: "pointer",
-        textAlign: "left",
-        fontSize: "14px",
-        fontWeight: activeSection === item.name ? 750 : 600,
-        color: activeSection === item.name ? "#4169dc" : "#68758d",
-        background: activeSection === item.name ? "#eef3ff" : "transparent"
-      }}
-    >
-      <span style={{ fontSize: "19px", width: "22px", textAlign: "center" }}>{item.icon}</span>
-      <span style={{ flex: 1 }}>{item.name}</span>
-      {item.name === "Notifications" && unreadNotifications > 0 && (
-        <span style={{ background: "#ef5268", color: "#fff", borderRadius: "20px", padding: "2px 7px", fontSize: "11px" }}>
-          {unreadNotifications}
-        </span>
-      )}
-    </button>
-  );
-
-  const sectionTitle = {
-    Dashboard: ["Your alumni space", "Your contributions help students grow. Manage mentorship, opportunities and events from one place."],
-    "My Profile": ["My Profile", "Keep your professional and academic information up to date."],
-    Mentorship: ["Mentorship Requests", "Review requests and support students on their career journey."],
-    Opportunities: ["Career Opportunities", "Share jobs, internships and other opportunities with the community."],
-    Events: ["Events & Activities", "Host events and view activities shared with the ReConnect community."],
-    Notifications: ["Notifications", "Stay informed about mentorship and community activity."],
-    Account: ["Account Settings", "Review your account details and sign out securely."]
-  }[activeSection];
-
   return (
-    <div style={styles.page}>
-      <style>{`
-        * { box-sizing: border-box; }
-        button, input, textarea, select { font-family: inherit; }
-        button:disabled { opacity: .6; cursor: not-allowed !important; }
-        input:focus, textarea:focus, select:focus {
-          border-color: #7897f4 !important;
-          box-shadow: 0 0 0 3px rgba(72,112,235,.10);
-        }
-        .alumni-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
-        .alumni-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 16px; }
-        .alumni-nav-toggle { display:none; }
-        .alumni-sidebar-overlay { display:none; }
-        .alumni-stat { transition:transform .18s ease, box-shadow .18s ease; }
-        .alumni-stat:hover { transform:translateY(-3px); box-shadow:0 12px 28px rgba(27,46,89,.09) !important; }
-        .alumni-action-row { display:flex; flex-wrap:wrap; gap:9px; }
-        @media (max-width:1100px) {
-          .alumni-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
-          .alumni-main { padding:24px !important; }
-        }
-        @media (max-width:760px) {
-          .alumni-sidebar { transform:translateX(-100%); transition:transform .2s ease; }
-          .alumni-sidebar.open { transform:translateX(0); }
-          .alumni-main { margin-left:0 !important; width:100% !important; padding:18px 14px 35px !important; }
-          .alumni-nav-toggle { display:inline-flex !important; }
-          .alumni-sidebar-overlay.open { display:block; position:fixed; inset:0; background:rgba(16,28,52,.38); z-index:4; }
-          .alumni-form-grid { grid-template-columns:1fr; }
-          .alumni-grid { grid-template-columns:1fr 1fr !important; gap:10px !important; }
-          .alumni-hero { padding:23px !important; }
-        }
-        @media (max-width:420px) {
-          .alumni-grid { grid-template-columns:1fr !important; }
-        }
-      `}</style>
+    <div style={pageStyle}>
+      <aside style={sidebarStyle}>
+        <h2 style={{ textAlign: "center", marginBottom: "10px" }}>
+          ReConnect
+        </h2>
 
-      <div
-        className={`alumni-sidebar-overlay ${mobileMenu ? "open" : ""}`}
-        onClick={() => setMobileMenu(false)}
-      />
+        <p
+          style={{
+            textAlign: "center",
+            color: "#cbd5e1",
+            marginBottom: "25px"
+          }}
+        >
+          Alumni Portal
+        </p>
 
-      <aside className={`alumni-sidebar ${mobileMenu ? "open" : ""}`} style={styles.sidebar}>
-        <div style={styles.brand}>
-          <div style={styles.brandIcon}>R</div>
-          <div>
-            <div style={styles.brandName}>ReConnect</div>
-            <div style={{ color: "#8b96aa", fontSize: "11px", marginTop: "2px" }}>Alumni Portal</div>
-          </div>
-        </div>
+        {menuItems.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => openSection(item)}
+            style={sectionButtonStyle(item)}
+          >
+            {item}
 
-        <div style={styles.navLabel}>WORKSPACE</div>
-        <nav style={{ flex: 1 }}>
-          {navItems.map(navButton)}
-        </nav>
-
-        <div style={{ borderTop: "1px solid #edf0f6", paddingTop: "17px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "7px 8px 14px" }}>
-            <div style={{
-              width: "38px", height: "38px", borderRadius: "50%",
-              background: "linear-gradient(135deg,#3978f6,#7956e8)",
-              display: "grid", placeItems: "center", color: "#fff", fontWeight: 800
-            }}>
-              {(user.fullName || "A").charAt(0).toUpperCase()}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: "13px", fontWeight: 750, color: "#293653", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {user.fullName || "Alumni"}
-              </div>
-              <div style={{ fontSize: "11px", color: "#929db0", marginTop: "3px" }}>Alumni Member</div>
-            </div>
-          </div>
-          <button type="button" onClick={handleLogout} style={{ ...styles.danger, width: "100%" }}>
-            ↪ &nbsp; Sign out
+            {item === "Notifications" && notifications.length > 0 && (
+              <span
+                style={{
+                  float: "right",
+                  background: "#ef4444",
+                  borderRadius: "20px",
+                  padding: "2px 7px",
+                  fontSize: "12px"
+                }}
+              >
+                {notifications.length}
+              </span>
+            )}
           </button>
-        </div>
+        ))}
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          style={{
+            width: "100%",
+            padding: "12px",
+            marginTop: "20px",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            background: "#dc3545",
+            color: "white",
+            fontSize: "14px"
+          }}
+        >
+          Logout
+        </button>
       </aside>
 
-      <main className="alumni-main" style={{ ...styles.main, width: "calc(100% - 250px)" }}>
-        <header style={styles.topbar}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <button
-              className="alumni-nav-toggle"
-              type="button"
-              onClick={() => setMobileMenu(true)}
-              style={{ ...styles.secondary, fontSize: "19px", padding: "8px 12px" }}
-              aria-label="Open navigation"
-            >
-              ☰
-            </button>
-            <div>
-              <div style={{ fontSize: "12px", color: "#929db0", marginBottom: "4px" }}>ReConnect / Alumni</div>
-              <div style={{ fontSize: "19px", fontWeight: 800, color: "#26334e" }}>{activeSection}</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <button
-              type="button"
-              onClick={() => openSection("Notifications")}
-              style={{ ...styles.secondary, position: "relative", padding: "10px 13px", fontSize: "17px" }}
-              aria-label="View notifications"
-            >
-              ♢
-              {unreadNotifications > 0 && (
-                <span style={{ position: "absolute", top: "-5px", right: "-5px", width: "10px", height: "10px", borderRadius: "50%", background: "#ef5268", border: "2px solid white" }} />
-              )}
-            </button>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "13px", fontWeight: 750, color: "#293653" }}>{user.fullName || "Alumni"}</div>
-              <div style={{ fontSize: "11px", color: "#929db0" }}>Alumni account</div>
-            </div>
-            <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "#e8edff", color: "#526bd2", display: "grid", placeItems: "center", fontWeight: 800 }}>
-              {(user.fullName || "A").charAt(0).toUpperCase()}
-            </div>
-          </div>
-        </header>
+      <main style={contentStyle}>
+        <div style={cardStyle}>
+          <h1 style={{ marginTop: 0 }}>Alumni Dashboard</h1>
+          <p>
+            Welcome, <strong>{user.fullName || "Alumni"}</strong>
+          </p>
+          <p style={{ color: "#64748b" }}>
+            Connect with students, provide mentorship, share opportunities,
+            host events and review genuine student feedback.
+          </p>
+        </div>
 
         {message && (
-          <div role="status" style={{
-            padding: "13px 16px",
-            borderRadius: "12px",
-            marginBottom: "18px",
-            border: `1px solid ${messageType === "error" ? "#ffcbd2" : "#b9ecd5"}`,
-            background: messageType === "error" ? "#fff1f2" : "#edfff6",
-            color: messageType === "error" ? "#b4233a" : "#14784e",
-            fontSize: "14px",
-            fontWeight: 600
-          }}>
+          <div
+            role="status"
+            style={{
+              background: messageType === "error" ? "#fee2e2" : "#e8f5e9",
+              color: messageType === "error" ? "#991b1b" : "#2e7d32",
+              padding: "12px",
+              borderRadius: "8px",
+              marginBottom: "20px"
+            }}
+          >
             {message}
-            <button type="button" onClick={() => setMessage("")} style={{ float: "right", border: 0, background: "transparent", color: "inherit", cursor: "pointer" }}>✕</button>
           </div>
         )}
 
+        {/* DASHBOARD */}
         {activeSection === "Dashboard" && (
-          <>
-            <section className="alumni-hero" style={{
-              ...styles.card,
-              padding: "31px",
-              border: 0,
-              color: "#fff",
-              background: "linear-gradient(115deg,#3476ed 0%,#5366e8 52%,#8056df 100%)",
-              position: "relative",
-              overflow: "hidden"
-            }}>
-              <div style={{ position: "absolute", width: "230px", height: "230px", borderRadius: "50%", border: "1px solid rgba(255,255,255,.13)", right: "8%", top: "-135px" }} />
-              <div style={{ position: "absolute", width: "180px", height: "180px", borderRadius: "50%", background: "rgba(255,255,255,.06)", right: "-35px", bottom: "-100px" }} />
-              <div style={{ position: "relative", maxWidth: "700px" }}>
-                <div style={{ fontSize: "12px", fontWeight: 800, letterSpacing: "1.4px", opacity: .8, marginBottom: "12px" }}>ALUMNI COMMUNITY</div>
-                <h1 style={{ fontSize: "clamp(25px,3vw,34px)", lineHeight: 1.2, margin: "0 0 12px", fontWeight: 850 }}>
-                  Welcome back, {user.fullName?.split(" ")[0] || "Alumni"}!
-                </h1>
-                <p style={{ fontSize: "14px", lineHeight: 1.7, opacity: .91, maxWidth: "610px", margin: "0 0 21px" }}>
-                  Your experience can make a difference. Mentor students, share career opportunities and bring the community together through events.
-                </p>
-                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                  <button type="button" onClick={() => openSection("Mentorship")} style={{ ...styles.primary, background: "#fff", color: "#4268d9", boxShadow: "none" }}>
-                    View mentorship requests →
-                  </button>
-                  <button type="button" onClick={() => openSection("My Profile")} style={{ border: "1px solid rgba(255,255,255,.55)", borderRadius: "10px", padding: "11px 16px", background: "rgba(255,255,255,.12)", color: "#fff", fontWeight: 700, cursor: "pointer" }}>
-                    Update profile
-                  </button>
-                </div>
-              </div>
-            </section>
+          <div>
+            <h2>Dashboard</h2>
 
-            <div className="alumni-grid" style={{ marginBottom: "22px" }}>
-              {statCards.map((stat) => (
-                <div className="alumni-stat" key={stat.label} style={{ ...styles.card, marginBottom: 0, padding: "18px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                    <span style={{ fontSize: "12px", color: "#7d899e", fontWeight: 700, lineHeight: 1.4 }}>{stat.label}</span>
-                    <span style={{ width: "37px", height: "37px", borderRadius: "12px", background: stat.bg, color: stat.color, display: "grid", placeItems: "center", fontSize: "20px", flexShrink: 0 }}>{stat.icon}</span>
-                  </div>
-                  <div style={{ fontSize: "29px", fontWeight: 850, letterSpacing: "-1px", color: "#24324c", marginTop: "14px" }}>{stat.value}</div>
-                  <div style={{ color: "#9aa5b6", fontSize: "11px", marginTop: "3px" }}>
-                    {stat.label === "Mentorship Requests" ? `${pendingRequests} awaiting response` : stat.label === "Notifications" ? "Unread updates" : "Available in community"}
-                  </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: "20px"
+              }}
+            >
+              {[
+                ["Mentorship", mentorships.length, "Student requests"],
+                ["Opportunities", opportunities.length, "Available opportunities"],
+                ["Events Hosted", ownEvents.length, "Your events"],
+                ["Student Feedback", totalFeedback, "Submitted responses"],
+                ["Notifications", notifications.length, "Account updates"]
+              ].map(([title, count, description]) => (
+                <div key={title} style={cardStyle}>
+                  <h3>{title}</h3>
+                  <h2>{count}</h2>
+                  <p>{description}</p>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: "18px" }}>
-              <div style={styles.card}>
-                <h2 style={{ ...styles.heading, fontSize: "18px" }}>Quick actions</h2>
-                <p style={{ ...styles.muted, marginTop: 0 }}>Continue contributing to your alumni network.</p>
-                {[
-                  ["♧", "Respond to mentorship", "Review student requests", "Mentorship"],
-                  ["▣", "Share an opportunity", "Post a job or internship", "Opportunities"],
-                  ["▦", "Host a community event", "Create an alumni activity", "Events"]
-                ].map(([icon, title, subtitle, section]) => (
-                  <button key={section} type="button" onClick={() => openSection(section)} style={{
-                    display: "flex", alignItems: "center", gap: "12px", width: "100%", textAlign: "left",
-                    padding: "13px 10px", border: 0, borderTop: "1px solid #f0f2f7", background: "#fff", cursor: "pointer"
-                  }}>
-                    <span style={{ width: "38px", height: "38px", borderRadius: "11px", background: "#eff3ff", color: "#5874dc", display: "grid", placeItems: "center", fontSize: "20px" }}>{icon}</span>
-                    <span style={{ flex: 1 }}>
-                      <span style={{ display: "block", fontSize: "13px", fontWeight: 750, color: "#2c3953" }}>{title}</span>
-                      <span style={{ display: "block", fontSize: "11px", color: "#8b97aa", marginTop: "4px" }}>{subtitle}</span>
-                    </span>
-                    <span style={{ color: "#9aa5b6" }}>›</span>
-                  </button>
-                ))}
-              </div>
-
-              <div style={styles.card}>
-                <h2 style={{ ...styles.heading, fontSize: "18px" }}>Your community activity</h2>
-                <p style={{ ...styles.muted, marginTop: 0 }}>A quick look at the latest items.</p>
-                {[
-                  { label: "Mentorship requests", value: mentorships.length, color: "#3978f6" },
-                  { label: "Opportunities shared", value: opportunities.length, color: "#8b5cf6" },
-                  { label: "Events listed", value: events.length, color: "#0eaa88" }
-                ].map((item) => (
-                  <div key={item.label} style={{ margin: "20px 0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", fontSize: "13px", fontWeight: 700, marginBottom: "9px" }}>
-                      <span style={{ color: "#526078" }}>{item.label}</span>
-                      <span style={{ color: item.color }}>{item.value}</span>
-                    </div>
-                    <div style={{ height: "7px", borderRadius: "20px", background: "#edf0f6", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${Math.min(item.value * 12, 100)}%`, background: item.color, borderRadius: "20px" }} />
-                    </div>
-                  </div>
-                ))}
-                <button type="button" onClick={() => openSection("Notifications")} style={{ ...styles.secondary, width: "100%", marginTop: "4px" }}>
-                  Check notifications →
-                </button>
-              </div>
+            <div style={cardStyle}>
+              <h2>Welcome to ReConnect</h2>
+              <p>
+                Support students through mentorship, career opportunities
+                and events. Create a feedback form for each event and publish
+                it so registered students can respond after the event ends.
+              </p>
+              <button
+                type="button"
+                style={primaryButton}
+                onClick={() => openSection("Feedback Forms")}
+              >
+                Manage Feedback Forms
+              </button>
             </div>
-          </>
+          </div>
         )}
 
+        {/* PROFILE */}
         {activeSection === "My Profile" && (
-          <>
-            <div style={{ marginBottom: "18px" }}>
-              <h1 style={styles.heading}>{sectionTitle[0]}</h1>
-              <p style={{ ...styles.muted, margin: 0 }}>{sectionTitle[1]}</p>
+          <div>
+            <h2>My Profile</h2>
+
+            <div style={cardStyle}>
+              <h3>Basic Information</h3>
+              <p><strong>Name:</strong> {user.fullName}</p>
+              <p><strong>Email:</strong> {user.email}</p>
+              <p><strong>Role:</strong> {user.role}</p>
             </div>
-            <div style={styles.card}>
-              <div style={{ display: "flex", alignItems: "center", gap: "14px", paddingBottom: "20px", borderBottom: "1px solid #edf0f6", marginBottom: "22px" }}>
-                <div style={{ width: "58px", height: "58px", borderRadius: "18px", background: "linear-gradient(135deg,#3978f6,#7956e8)", color: "#fff", display: "grid", placeItems: "center", fontSize: "24px", fontWeight: 800 }}>
-                  {(user.fullName || "A").charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h2 style={{ margin: "0 0 5px", fontSize: "18px", color: "#26334e" }}>{user.fullName}</h2>
-                  <div style={{ color: "#8390a5", fontSize: "13px" }}>{user.email}</div>
-                  <span style={{ display: "inline-block", marginTop: "7px", color: "#4770d9", background: "#eef3ff", borderRadius: "20px", padding: "4px 9px", fontSize: "11px", fontWeight: 750 }}>Alumni member</span>
-                </div>
-              </div>
-              <h3 style={{ fontSize: "16px", margin: "0 0 17px", color: "#2b3954" }}>Professional & academic details</h3>
+
+            <div style={cardStyle}>
+              <h3>Update Profile</h3>
+
               <form onSubmit={handleSaveProfile}>
-                <div className="alumni-form-grid">
-                  <Field label="Phone number" name="phone" value={profile.phone} onChange={handleProfileChange} placeholder="Enter phone number" />
-                  <Field label="College / University" name="college" value={profile.college} onChange={handleProfileChange} placeholder="Your college" />
-                  <Field label="Branch / Department" name="branch" value={profile.branch} onChange={handleProfileChange} placeholder="e.g. Information Technology" />
-                  <Field label="Graduation year" name="year" value={profile.year} onChange={handleProfileChange} placeholder="e.g. 2023" />
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <Field label="Skills" name="skills" value={profile.skills} onChange={handleProfileChange} placeholder="e.g. Java, Python, React, Data Analysis" />
-                  </div>
-                </div>
-                <label style={styles.label}>
-                  About me
+                {[
+                  ["phone", "Phone"],
+                  ["college", "College"],
+                  ["branch", "Branch"],
+                  ["year", "Graduation Year"],
+                  ["skills", "Skills"]
+                ].map(([name, label]) => (
+                  <label
+                    key={name}
+                    style={{ display: "block", marginBottom: "8px" }}
+                  >
+                    {label}
+                    <input
+                      name={name}
+                      value={profile[name]}
+                      onChange={handleProfileChange}
+                      placeholder={
+                        name === "skills" ? "Java, Python, React..." : ""
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+                ))}
+
+                <label>
+                  Bio
                   <textarea
                     name="bio"
-                    rows="5"
                     value={profile.bio}
                     onChange={handleProfileChange}
-                    placeholder="Write a short introduction about your experience and interests..."
-                    style={{ ...styles.input, resize: "vertical", lineHeight: 1.6 }}
+                    rows="5"
+                    style={inputStyle}
                   />
                 </label>
-                <button type="submit" disabled={loading} style={styles.primary}>
-                  {loading ? "Saving..." : "Save profile"}
+
+                <button
+                  type="submit"
+                  style={primaryButton}
+                  disabled={loading}
+                >
+                  {loading ? "Saving..." : "Save Profile"}
                 </button>
               </form>
             </div>
-          </>
+          </div>
         )}
 
+        {/* MENTORSHIP */}
         {activeSection === "Mentorship" && (
-          <>
-            <div style={{ marginBottom: "18px" }}>
-              <h1 style={styles.heading}>{sectionTitle[0]}</h1>
-              <p style={{ ...styles.muted, margin: 0 }}>{sectionTitle[1]}</p>
-            </div>
+          <div>
+            <h2>Mentorship Requests</h2>
+
             {mentorships.length === 0 ? (
-              <EmptyState title="No mentorship requests yet" description="Student requests will appear here when they connect with you." />
-            ) : mentorships.map((request) => (
-              <div key={request._id} style={styles.card}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", gap: "13px", alignItems: "center" }}>
-                    <div style={{ width: "45px", height: "45px", borderRadius: "14px", background: "#edf3ff", color: "#4d70d9", display: "grid", placeItems: "center", fontSize: "20px" }}>♙</div>
-                    <div>
-                      <h3 style={{ margin: "0 0 5px", fontSize: "16px", color: "#293752" }}>{request.studentId?.fullName || "Student"}</h3>
-                      <div style={{ color: "#8390a5", fontSize: "13px" }}>{request.studentId?.email || "Email not available"}</div>
-                    </div>
-                  </div>
-                  <span style={{
-                    borderRadius: "20px", padding: "6px 11px", fontSize: "11px", fontWeight: 800,
-                    background: request.status === "Accepted" ? "#e8f9f0" : request.status === "Rejected" ? "#fff0f1" : "#fff6e7",
-                    color: request.status === "Accepted" ? "#16824f" : request.status === "Rejected" ? "#c23c50" : "#a66b12"
-                  }}>{request.status || "Pending"}</span>
-                </div>
-                <div style={{ marginTop: "16px", borderTop: "1px solid #f0f2f7", paddingTop: "14px" }}>
-                  <div style={{ color: "#8792a5", fontSize: "12px" }}>Request received</div>
-                  <div style={{ color: "#526078", fontSize: "13px", marginTop: "4px" }}>
-                    {request.createdAt ? new Date(request.createdAt).toLocaleString() : "Date not available"}
-                  </div>
-                </div>
-                {request.status === "Pending" && (
-                  <div className="alumni-action-row" style={{ marginTop: "16px" }}>
-                    <button type="button" disabled={loading} onClick={() => updateMentorship(request._id, "Accepted")} style={styles.primary}>Accept request</button>
-                    <button type="button" disabled={loading} onClick={() => updateMentorship(request._id, "Rejected")} style={styles.danger}>Decline</button>
-                  </div>
-                )}
+              <div style={cardStyle}>
+                <h3>No Mentorship Requests</h3>
+                <p>Students have not sent any mentorship requests yet.</p>
               </div>
-            ))}
-          </>
+            ) : (
+              mentorships.map((request) => (
+                <div key={request._id} style={cardStyle}>
+                  <h3>🤝 Mentorship Request</h3>
+                  <p>
+                    <strong>Student:</strong>{" "}
+                    {request.studentId?.fullName || "Student"}
+                  </p>
+                  <p>
+                    <strong>Email:</strong>{" "}
+                    {request.studentId?.email || "Not available"}
+                  </p>
+                  <p><strong>Status:</strong> {request.status}</p>
+
+                  {request.status === "Pending" && (
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <button
+                        type="button"
+                        style={primaryButton}
+                        disabled={loading}
+                        onClick={() =>
+                          updateMentorship(request._id, "Accepted")
+                        }
+                      >
+                        Accept
+                      </button>
+
+                      <button
+                        type="button"
+                        style={dangerButton}
+                        disabled={loading}
+                        onClick={() =>
+                          updateMentorship(request._id, "Rejected")
+                        }
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         )}
 
+        {/* OPPORTUNITIES */}
         {activeSection === "Opportunities" && (
-          <>
-            <div style={{ marginBottom: "18px" }}>
-              <h1 style={styles.heading}>{sectionTitle[0]}</h1>
-              <p style={{ ...styles.muted, margin: 0 }}>{sectionTitle[1]}</p>
-            </div>
-            <div style={styles.card}>
-              <h2 style={{ ...styles.heading, fontSize: "18px" }}>Post a new opportunity</h2>
-              <p style={{ ...styles.muted, marginTop: 0 }}>Provide details so students can learn about the opportunity.</p>
+          <div>
+            <h2>Opportunities</h2>
+
+            <div style={cardStyle}>
+              <h3>Share an Opportunity</h3>
+
               <form onSubmit={handleCreateOpportunity}>
-                <div className="alumni-form-grid">
-                  <Field label="Opportunity title" name="title" value={opportunityForm.title} onChange={handleOpportunityChange} placeholder="e.g. Software Developer Intern" required />
-                  <Field label="Company" name="company" value={opportunityForm.company} onChange={handleOpportunityChange} placeholder="Company name" required />
-                  <label style={styles.label}>
-                    Opportunity type
-                    <select name="type" value={opportunityForm.type} onChange={handleOpportunityChange} style={styles.input}>
-                      <option value="Job">Job</option>
-                      <option value="Internship">Internship</option>
-                      <option value="Scholarship">Scholarship</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </label>
-                  <Field label="Location" name="location" value={opportunityForm.location} onChange={handleOpportunityChange} placeholder="e.g. Pune / Remote" />
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <Field label="Application link" name="link" value={opportunityForm.link} onChange={handleOpportunityChange} placeholder="https://..." />
-                  </div>
-                </div>
-                <label style={styles.label}>
-                  Description
-                  <textarea name="description" rows="4" value={opportunityForm.description} onChange={handleOpportunityChange} placeholder="Describe the role, requirements and application details..." style={{ ...styles.input, resize: "vertical" }} />
-                </label>
-                <button type="submit" disabled={loading} style={styles.primary}>{loading ? "Posting..." : "＋ Post opportunity"}</button>
+                <input
+                  name="title"
+                  value={opportunityForm.title}
+                  onChange={handleOpportunityChange}
+                  placeholder="Opportunity title"
+                  required
+                  style={inputStyle}
+                />
+
+                <input
+                  name="company"
+                  value={opportunityForm.company}
+                  onChange={handleOpportunityChange}
+                  placeholder="Company name"
+                  required
+                  style={inputStyle}
+                />
+
+                <select
+                  name="type"
+                  value={opportunityForm.type}
+                  onChange={handleOpportunityChange}
+                  style={inputStyle}
+                >
+                  <option value="Job">Job</option>
+                  <option value="Internship">Internship</option>
+                  <option value="Scholarship">Scholarship</option>
+                  <option value="Other">Other</option>
+                </select>
+
+                <textarea
+                  name="description"
+                  value={opportunityForm.description}
+                  onChange={handleOpportunityChange}
+                  placeholder="Description"
+                  rows="4"
+                  style={inputStyle}
+                />
+
+                <input
+                  name="location"
+                  value={opportunityForm.location}
+                  onChange={handleOpportunityChange}
+                  placeholder="Location / Remote"
+                  style={inputStyle}
+                />
+
+                <input
+                  name="link"
+                  value={opportunityForm.link}
+                  onChange={handleOpportunityChange}
+                  placeholder="Application link"
+                  style={inputStyle}
+                />
+
+                <button
+                  type="submit"
+                  style={primaryButton}
+                  disabled={loading}
+                >
+                  {loading ? "Posting..." : "Post Opportunity"}
+                </button>
               </form>
             </div>
 
-            <h2 style={{ ...styles.heading, fontSize: "18px", margin: "25px 0 15px" }}>Community opportunities</h2>
+            <h3>Available Opportunities</h3>
+
             {opportunities.length === 0 ? (
-              <EmptyState title="No opportunities available" description="Opportunities posted by alumni will appear here." />
-            ) : opportunities.map((item) => (
-              <div key={item._id} style={styles.card}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-                  <div>
-                    <h3 style={{ margin: "0 0 7px", color: "#293752", fontSize: "17px" }}>{item.title}</h3>
-                    <div style={{ color: "#65738b", fontSize: "13px", fontWeight: 650 }}>{item.company || "Company not specified"}</div>
-                  </div>
-                  <span style={{ alignSelf: "flex-start", padding: "6px 10px", borderRadius: "20px", background: "#f0edff", color: "#7554cb", fontSize: "11px", fontWeight: 800 }}>{item.type || "Opportunity"}</span>
+              <div style={cardStyle}>No opportunities available.</div>
+            ) : (
+              opportunities.map((item) => (
+                <div key={item._id || item.id} style={cardStyle}>
+                  <h3>{item.title}</h3>
+                  <p>
+                    <strong>Company:</strong>{" "}
+                    {item.company || "Not specified"}
+                  </p>
+                  <p>
+                    <strong>Type:</strong> {item.type || "Not specified"}
+                  </p>
+                  <p>{item.description || "No description."}</p>
+                  <p>
+                    <strong>Location:</strong>{" "}
+                    {item.location || "Not specified"}
+                  </p>
+
+                  {item.link && (
+                    <p>
+                      <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Apply / View Opportunity
+                      </a>
+                    </p>
+                  )}
                 </div>
-                <p style={{ ...styles.muted, margin: "14px 0" }}>{item.description || "No description provided."}</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "15px", color: "#77849a", fontSize: "12px", marginBottom: "13px" }}>
-                  <span>⌖ {item.location || "Location not specified"}</span>
-                  {item.createdAt && <span>◷ {new Date(item.createdAt).toLocaleDateString()}</span>}
-                </div>
-                {item.link && (
-                  <a href={item.link} target="_blank" rel="noreferrer" style={{ display: "inline-block", color: "#426de0", fontSize: "13px", fontWeight: 750, textDecoration: "none" }}>
-                    View / Apply ↗
-                  </a>
-                )}
-              </div>
-            ))}
-            <div style={{ padding: "13px 16px", borderRadius: "12px", background: "#fff8e9", color: "#94651c", fontSize: "12px", border: "1px solid #ffebc2" }}>
-              Opportunity removal is managed by the Admin.
-            </div>
-          </>
+              ))
+            )}
+          </div>
         )}
 
+        {/* EVENTS */}
         {activeSection === "Events" && (
-          <>
-            <div style={{ marginBottom: "18px" }}>
-              <h1 style={styles.heading}>{sectionTitle[0]}</h1>
-              <p style={{ ...styles.muted, margin: 0 }}>{sectionTitle[1]}</p>
-            </div>
-            <div style={styles.card}>
-              <h2 style={{ ...styles.heading, fontSize: "18px" }}>Host an event</h2>
-              <p style={{ ...styles.muted, marginTop: 0 }}>Create a networking, mentoring or alumni community event.</p>
+          <div>
+            <h2>Events</h2>
+
+            <div style={cardStyle}>
+              <h3>Host an Event</h3>
+
               <form onSubmit={handleHostEvent}>
-                <div className="alumni-form-grid">
-                  <Field label="Event title" name="title" value={eventForm.title} onChange={handleEventChange} placeholder="Enter event name" required />
-                  <Field label="Location" name="location" value={eventForm.location} onChange={handleEventChange} placeholder="Venue or online" />
-                  <Field label="Event date" name="date" type="date" value={eventForm.date} onChange={handleEventChange} required />
-                  <Field label="Event time" name="time" type="time" value={eventForm.time} onChange={handleEventChange} required />
-                </div>
-                <label style={styles.label}>
-                  Event description
-                  <textarea name="description" rows="4" value={eventForm.description} onChange={handleEventChange} placeholder="Share the event agenda and details..." style={{ ...styles.input, resize: "vertical" }} />
+                <input
+                  name="title"
+                  value={eventForm.title}
+                  onChange={handleEventChange}
+                  placeholder="Event title"
+                  required
+                  style={inputStyle}
+                />
+
+                <textarea
+                  name="description"
+                  value={eventForm.description}
+                  onChange={handleEventChange}
+                  placeholder="Event description"
+                  rows="4"
+                  style={inputStyle}
+                />
+
+                <label>
+                  Start Date
+                  <input
+                    type="date"
+                    name="date"
+                    value={eventForm.date}
+                    onChange={handleEventChange}
+                    required
+                    style={inputStyle}
+                  />
                 </label>
-                <button type="submit" disabled={loading} style={styles.primary}>{loading ? "Creating..." : "＋ Host event"}</button>
+
+                <label>
+                  Start Time
+                  <input
+                    type="time"
+                    name="time"
+                    value={eventForm.time}
+                    onChange={handleEventChange}
+                    required
+                    style={inputStyle}
+                  />
+                </label>
+
+                <label>
+                  End Date
+                  <input
+                    type="date"
+                    name="endDate"
+                    value={eventForm.endDate}
+                    min={eventForm.date || undefined}
+                    onChange={handleEventChange}
+                    required
+                    style={inputStyle}
+                  />
+                </label>
+
+                <label>
+                  End Time
+                  <input
+                    type="time"
+                    name="endTime"
+                    value={eventForm.endTime}
+                    onChange={handleEventChange}
+                    required
+                    style={inputStyle}
+                  />
+                </label>
+
+                <input
+                  name="location"
+                  value={eventForm.location}
+                  onChange={handleEventChange}
+                  placeholder="Event location"
+                  style={inputStyle}
+                />
+
+                <button
+                  type="submit"
+                  style={primaryButton}
+                  disabled={loading}
+                >
+                  {loading ? "Hosting..." : "Host Event"}
+                </button>
               </form>
             </div>
 
-            <h2 style={{ ...styles.heading, fontSize: "18px", margin: "25px 0 15px" }}>Community events</h2>
+            <h3>Events Hosted / Available</h3>
+
             {events.length === 0 ? (
-              <EmptyState title="No events listed yet" description="Events created by alumni will appear here." />
-            ) : events.map((item) => (
-              <div key={item._id} style={styles.card}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: "15px" }}>
-                  <div style={{ minWidth: "61px", padding: "10px 5px", borderRadius: "13px", background: "#eef3ff", textAlign: "center", color: "#4a6bd4" }}>
-                    <div style={{ fontSize: "11px", fontWeight: 800 }}>{item.date ? new Date(item.date + "T00:00:00").toLocaleDateString("en-IN", { month: "short" }).toUpperCase() : "EVENT"}</div>
-                    <div style={{ fontSize: "22px", fontWeight: 850 }}>{item.date ? new Date(item.date + "T00:00:00").getDate() : "—"}</div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <h3 style={{ margin: "0 0 7px", color: "#293752", fontSize: "17px" }}>{item.title}</h3>
-                    <p style={{ ...styles.muted, margin: "0 0 12px" }}>{item.description || "No description provided."}</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", fontSize: "12px", color: "#77849a" }}>
-                      <span>◷ {item.time || "Time not specified"}</span>
-                      <span>⌖ {item.location || "Location not specified"}</span>
-                    </div>
-                    <div style={{ color: "#8b96a9", fontSize: "12px", marginTop: "10px" }}>Hosted by {item.organizer?.fullName || "Alumni"}</div>
-                  </div>
+              <div style={cardStyle}>No events available.</div>
+            ) : (
+              events.map((event) => (
+                <div key={event._id || event.id} style={cardStyle}>
+                  <h3>{event.title}</h3>
+                  <p>{event.description || "No description."}</p>
+                  <p>
+                    <strong>Start:</strong> {formatDate(event.date)} at{" "}
+                    {formatTime(event.time)}
+                  </p>
+                  <p>
+                    <strong>End:</strong>{" "}
+                    {formatDate(event.endDate || event.date)} at{" "}
+                    {formatTime(event.endTime || event.time)}
+                  </p>
+                  <p>
+                    <strong>Location:</strong>{" "}
+                    {event.location || "Not specified"}
+                  </p>
+                  <p>
+                    <strong>Organizer:</strong>{" "}
+                    {event.organizer?.fullName || "Alumni"}
+                  </p>
+
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "6px 10px",
+                      borderRadius: "20px",
+                      background: isEventEnded(event)
+                        ? "#fee2e2"
+                        : "#dcfce7",
+                      color: isEventEnded(event)
+                        ? "#991b1b"
+                        : "#166534",
+                      fontSize: "13px",
+                      fontWeight: 600
+                    }}
+                  >
+                    {isEventEnded(event)
+                      ? "Event Ended"
+                      : "Upcoming Event"}
+                  </span>
                 </div>
-              </div>
-            ))}
-            <div style={{ padding: "13px 16px", borderRadius: "12px", background: "#fff8e9", color: "#94651c", fontSize: "12px", border: "1px solid #ffebc2" }}>
-              Event removal is managed by the Admin.
-            </div>
-          </>
+              ))
+            )}
+          </div>
         )}
 
-        {activeSection === "Notifications" && (
-          <>
-            <div style={{ marginBottom: "18px" }}>
-              <h1 style={styles.heading}>{sectionTitle[0]}</h1>
-              <p style={{ ...styles.muted, margin: 0 }}>{sectionTitle[1]}</p>
+        {/* FEEDBACK FORMS */}
+        {activeSection === "Feedback Forms" && (
+          <div>
+            <h2>Feedback Forms</h2>
+
+            <p style={{ color: "#64748b" }}>
+              Select an event, create its questions, save the form, and publish
+              it. Students who registered can submit their responses after the
+              event ends.
+            </p>
+
+            <div style={cardStyle}>
+              <label>
+                Select Your Event
+                <select
+                  value={selectedEventId}
+                  onChange={(event) =>
+                    selectFeedbackEvent(event.target.value)
+                  }
+                  style={inputStyle}
+                  required
+                >
+                  <option value="">-- Select an event --</option>
+
+                  {ownEvents.map((event) => (
+                    <option
+                      key={event._id || event.id}
+                      value={event._id || event.id}
+                    >
+                      {event.title} ({formatDate(event.date)})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {!ownEvents.length && (
+                <p>Host an event before creating its feedback form.</p>
+              )}
             </div>
-            {notificationLoading ? (
-              <div style={styles.card}>Loading notifications...</div>
-            ) : notifications.length === 0 ? (
-              <EmptyState title="You're all caught up" description="New updates and activity notifications will appear here." />
-            ) : notifications.map((item) => (
-              <div key={item._id} style={{ ...styles.card, borderLeft: `4px solid ${item.read ? "#d8deea" : "#5276e6"}` }}>
-                <div style={{ display: "flex", gap: "13px", alignItems: "flex-start" }}>
-                  <div style={{ width: "40px", height: "40px", flexShrink: 0, borderRadius: "12px", background: item.read ? "#f1f3f8" : "#edf3ff", display: "grid", placeItems: "center", color: "#5574d8", fontSize: "19px" }}>♢</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
-                      <h3 style={{ margin: "2px 0 7px", color: "#293752", fontSize: "15px" }}>
-                        {item.title || ({
-                          MENTORSHIP_REQUEST: "New mentorship request",
-                          MENTORSHIP_APPROVED: "Mentorship accepted",
-                          MENTORSHIP_REJECTED: "Mentorship update",
-                          OPPORTUNITY: "New opportunity",
-                          EVENT: "Community event",
-                          ACCOUNT: "Account update"
-                        }[item.type] || "ReConnect notification")}
+
+            {selectedEventId && (
+              <>
+                <div style={cardStyle}>
+                  <h3>Create / Edit Feedback Form</h3>
+
+                  <form onSubmit={saveFeedbackForm}>
+                    <label>
+                      Form Title
+                      <input
+                        value={feedbackFormTitle}
+                        onChange={(event) =>
+                          setFeedbackFormTitle(event.target.value)
+                        }
+                        placeholder="e.g. Workshop Feedback"
+                        required
+                        disabled={
+                          feedbackForms[selectedEventId]?.status ===
+                          "Published"
+                        }
+                        style={inputStyle}
+                      />
+                    </label>
+
+                    <label>
+                      Description
+                      <textarea
+                        value={feedbackFormDescription}
+                        onChange={(event) =>
+                          setFeedbackFormDescription(event.target.value)
+                        }
+                        placeholder="Tell students what this form is for"
+                        rows="3"
+                        disabled={
+                          feedbackForms[selectedEventId]?.status ===
+                          "Published"
+                        }
+                        style={inputStyle}
+                      />
+                    </label>
+
+                    <div
+                      style={{
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "8px",
+                        padding: "16px",
+                        marginBottom: "16px"
+                      }}
+                    >
+                      <h4>Add a Question</h4>
+
+                      <input
+                        value={feedbackQuestion}
+                        onChange={(event) =>
+                          setFeedbackQuestion(event.target.value)
+                        }
+                        placeholder="Enter your question"
+                        disabled={
+                          feedbackForms[selectedEventId]?.status ===
+                          "Published"
+                        }
+                        style={inputStyle}
+                      />
+
+                      <select
+                        value={feedbackQuestionType}
+                        onChange={(event) =>
+                          setFeedbackQuestionType(event.target.value)
+                        }
+                        disabled={
+                          feedbackForms[selectedEventId]?.status ===
+                          "Published"
+                        }
+                        style={inputStyle}
+                      >
+                        <option value="rating">Rating (1–5)</option>
+                        <option value="text">Written answer</option>
+                      </select>
+
+                      <button
+                        type="button"
+                        style={primaryButton}
+                        disabled={
+                          feedbackFormLoading ||
+                          feedbackForms[selectedEventId]?.status ===
+                            "Published"
+                        }
+                        onClick={addFeedbackQuestion}
+                      >
+                        Add Question
+                      </button>
+                    </div>
+
+                    <h4>Questions</h4>
+
+                    {(feedbackForms[selectedEventId]?.questions || [])
+                      .length === 0 ? (
+                      <p>No questions added yet.</p>
+                    ) : (
+                      feedbackForms[selectedEventId].questions.map(
+                        (question, index) => (
+                          <div
+                            key={question._id || question.id || index}
+                            style={{
+                              border: "1px solid #e2e8f0",
+                              borderRadius: "8px",
+                              padding: "12px",
+                              marginBottom: "10px"
+                            }}
+                          >
+                            <p>
+                              <strong>
+                                {index + 1}. {question.question}
+                              </strong>
+                            </p>
+
+                            <p
+                              style={{
+                                color: "#64748b",
+                                marginBottom: 0
+                              }}
+                            >
+                              Type:{" "}
+                              {question.type === "rating"
+                                ? "Rating (1–5)"
+                                : "Written answer"}
+                            </p>
+
+                            {feedbackForms[selectedEventId]?.status !==
+                              "Published" && (
+                              <button
+                                type="button"
+                                style={{
+                                  ...dangerButton,
+                                  marginTop: "10px"
+                                }}
+                                onClick={() =>
+                                  removeFeedbackQuestion(index)
+                                }
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        )
+                      )
+                    )}
+
+                    <p>
+                      <strong>Status:</strong>{" "}
+                      {feedbackForms[selectedEventId]?.status || "Not saved"}
+                    </p>
+
+                    <button
+                      type="submit"
+                      style={primaryButton}
+                      disabled={
+                        feedbackFormLoading ||
+                        feedbackForms[selectedEventId]?.status === "Published"
+                      }
+                    >
+                      {feedbackFormLoading
+                        ? "Saving..."
+                        : "Save Feedback Form"}
+                    </button>
+
+                    <button
+                      type="button"
+                      style={{
+                        ...primaryButton,
+                        marginLeft: "10px",
+                        background: "#15803d"
+                      }}
+                      disabled={
+                        feedbackFormLoading ||
+                        feedbackForms[selectedEventId]?.status === "Published"
+                      }
+                      onClick={publishFeedbackForm}
+                    >
+                      {feedbackFormLoading
+                        ? "Please wait..."
+                        : feedbackForms[selectedEventId]?.status ===
+                          "Published"
+                        ? "Published"
+                        : "Publish Form"}
+                    </button>
+                  </form>
+                </div>
+
+                {feedbackForms[selectedEventId]?.status === "Published" && (
+                  <div style={{ ...cardStyle, background: "#dcfce7" }}>
+                    <strong>Feedback form published.</strong>
+                    <p>
+                      Students can see this form for this event and submit it
+                      after the event ends, subject to registration.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* EVENT REPORTS */}
+        {activeSection === "Event Reports" && (
+          <div>
+            <h2>Event Reports & Student Feedback</h2>
+
+            <p style={{ color: "#64748b" }}>
+              Reports contain feedback actually submitted by students for
+              events hosted by your account.
+            </p>
+
+            <button
+              type="button"
+              style={{ ...primaryButton, marginBottom: "20px" }}
+              disabled={reportLoading}
+              onClick={() => loadEventReports(getUserId(user))}
+            >
+              {reportLoading ? "Refreshing..." : "Refresh Reports"}
+            </button>
+
+            {reportLoading ? (
+              <div style={cardStyle}>Loading event reports...</div>
+            ) : reports.length === 0 ? (
+              <div style={cardStyle}>
+                <h3>No Hosted Event Reports</h3>
+                <p>
+                  Host an event first, then return here to view its report.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: "16px"
+                  }}
+                >
+                  {[
+                    [
+                      "Events Hosted",
+                      reportSummary.totalEventsHosted ?? reports.length
+                    ],
+                    [
+                      "Active Registrations",
+                      reportSummary.totalActiveRegistrations ??
+                        reports.reduce(
+                          (sum, item) =>
+                            sum + Number(item.registrationCount || 0),
+                          0
+                        )
+                    ],
+                    ["Student Feedback", totalFeedback],
+                    [
+                      "Average Rating",
+                      calculatedAverageRating === null
+                        ? "No ratings yet"
+                        : `${calculatedAverageRating} / 5`
+                    ]
+                  ].map(([title, value]) => (
+                    <div key={title} style={cardStyle}>
+                      <p style={{ color: "#64748b", marginTop: 0 }}>
+                        {title}
+                      </p>
+                      <h2 style={{ marginBottom: 0 }}>{value}</h2>
+                    </div>
+                  ))}
+                </div>
+
+                {reports.map((report, index) => {
+                  const event = report.event || {};
+                  const eventId = String(event._id || event.id || "");
+
+                  const matchingFeedback = studentFeedback.filter(
+                    (item) => String(item.eventId || "") === eventId
+                  );
+
+                  const eventRatings = matchingFeedback
+                    .map((item) => Number(item.rating))
+                    .filter(
+                      (rating) =>
+                        Number.isFinite(rating) &&
+                        rating >= 1 &&
+                        rating <= 5
+                    );
+
+                  const eventAverage = eventRatings.length
+                    ? (
+                        eventRatings.reduce(
+                          (sum, rating) => sum + rating,
+                          0
+                        ) / eventRatings.length
+                      ).toFixed(2)
+                    : null;
+
+                  return (
+                    <div key={eventId || index} style={cardStyle}>
+                      <h3 style={{ marginTop: 0 }}>
+                        {event.title || "Untitled Event"}
                       </h3>
-                      {!item.read && <span style={{ color: "#4770d9", fontSize: "11px", fontWeight: 800 }}>NEW</span>}
+
+                      <p>
+                        <strong>Start:</strong> {formatDate(event.date)} at{" "}
+                        {formatTime(event.time)}
+                      </p>
+
+                      <p>
+                        <strong>End:</strong>{" "}
+                        {formatDate(event.endDate || event.date)} at{" "}
+                        {formatTime(event.endTime || event.time)}
+                      </p>
+
+                      <p>
+                        <strong>Location:</strong>{" "}
+                        {event.location || "Not specified"}
+                      </p>
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fit, minmax(150px, 1fr))",
+                          gap: "12px",
+                          margin: "18px 0"
+                        }}
+                      >
+                        {[
+                          [
+                            "Active Registrations",
+                            report.registrationCount ?? 0
+                          ],
+                          [
+                            "Cancelled Registrations",
+                            report.cancelledCount ?? 0
+                          ],
+                          ["Feedback Count", matchingFeedback.length],
+                          [
+                            "Average Rating",
+                            eventAverage === null
+                              ? "No ratings yet"
+                              : `${eventAverage} / 5`
+                          ]
+                        ].map(([title, value]) => (
+                          <div
+                            key={title}
+                            style={{
+                              background: "#f1f5f9",
+                              padding: "15px",
+                              borderRadius: "8px"
+                            }}
+                          >
+                            <strong>{title}</strong>
+                            <h2 style={{ marginBottom: 0 }}>{value}</h2>
+                          </div>
+                        ))}
+                      </div>
+
+                      <h4>Student Ratings & Comments</h4>
+
+                      {matchingFeedback.length === 0 ? (
+                        <div
+                          style={{
+                            background: "#f8fafc",
+                            padding: "16px",
+                            borderRadius: "8px",
+                            color: "#64748b"
+                          }}
+                        >
+                          No student feedback is available for this event yet.
+                        </div>
+                      ) : (
+                        matchingFeedback.map((feedback, feedbackIndex) => (
+                          <div
+                            key={
+                              feedback._id ||
+                              `${eventId}-${feedbackIndex}`
+                            }
+                            style={{
+                              border: "1px solid #e2e8f0",
+                              borderRadius: "8px",
+                              padding: "15px",
+                              marginBottom: "12px",
+                              background: "#f8fafc"
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                flexWrap: "wrap",
+                                gap: "8px"
+                              }}
+                            >
+                              <strong>
+                                {feedback.studentId?.fullName || "Student"}
+                              </strong>
+
+                              {Number(feedback.rating) >= 1 &&
+                                Number(feedback.rating) <= 5 && (
+                                  <span
+                                    style={{
+                                      color: "#b45309",
+                                      fontWeight: 700
+                                    }}
+                                  >
+                                    {"★".repeat(Number(feedback.rating))}
+                                    {"☆".repeat(
+                                      5 - Number(feedback.rating)
+                                    )}{" "}
+                                    ({feedback.rating}/5)
+                                  </span>
+                                )}
+                            </div>
+
+                            {feedback.comments && (
+                              <p style={{ whiteSpace: "pre-wrap" }}>
+                                {feedback.comments}
+                              </p>
+                            )}
+
+                            {Array.isArray(feedback.answers) &&
+                              feedback.answers.map((answer, answerIndex) => (
+                                <p key={answer._id || answerIndex}>
+                                  <strong>
+                                    {answer.question || "Answer"}:
+                                  </strong>{" "}
+                                  {String(answer.answer ?? "")}
+                                </p>
+                              ))}
+
+                            {feedback.createdAt && (
+                              <small style={{ color: "#64748b" }}>
+                                Submitted:{" "}
+                                {new Date(
+                                  feedback.createdAt
+                                ).toLocaleString()}
+                              </small>
+                            )}
+                          </div>
+                        ))
+                      )}
                     </div>
-                    <p style={{ ...styles.muted, margin: "0 0 9px" }}>{item.message}</p>
-                    {item.createdAt && <div style={{ color: "#9aa4b5", fontSize: "11px" }}>{new Date(item.createdAt).toLocaleString()}</div>}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </>
+                  );
+                })}
+              </>
+            )}
+          </div>
         )}
 
+        {/* NOTIFICATIONS */}
+        {activeSection === "Notifications" && (
+          <div>
+            <h2>Notifications</h2>
+
+            {notificationLoading ? (
+              <div style={cardStyle}>Loading notifications...</div>
+            ) : notifications.length === 0 ? (
+              <div style={cardStyle}>
+                <h3>🔔 No Notifications</h3>
+                <p>You don't have any notifications yet.</p>
+              </div>
+            ) : (
+              notifications.map((notification) => (
+                <div
+                  key={notification._id || notification.id}
+                  style={{
+                    ...cardStyle,
+                    borderLeft: notification.read
+                      ? "4px solid #cbd5e1"
+                      : "4px solid #2563eb"
+                  }}
+                >
+                  <h3>{notification.title || "🔔 Notification"}</h3>
+                  <p>{notification.message}</p>
+
+                  {notification.createdAt && (
+                    <small>
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </small>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ACCOUNT */}
         {activeSection === "Account" && (
-          <>
-            <div style={{ marginBottom: "18px" }}>
-              <h1 style={styles.heading}>{sectionTitle[0]}</h1>
-              <p style={{ ...styles.muted, margin: 0 }}>{sectionTitle[1]}</p>
+          <div>
+            <h2>Account</h2>
+
+            <div style={cardStyle}>
+              <h3>Account Information</h3>
+              <p><strong>Name:</strong> {user.fullName}</p>
+              <p><strong>Email:</strong> {user.email}</p>
+              <p><strong>Role:</strong> {user.role}</p>
             </div>
-            <div style={styles.card}>
-              <div style={{ display: "flex", alignItems: "center", gap: "15px", paddingBottom: "20px", borderBottom: "1px solid #edf0f6" }}>
-                <div style={{ width: "60px", height: "60px", borderRadius: "18px", background: "linear-gradient(135deg,#3978f6,#7956e8)", color: "#fff", display: "grid", placeItems: "center", fontSize: "24px", fontWeight: 800 }}>
-                  {(user.fullName || "A").charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h2 style={{ margin: "0 0 5px", fontSize: "18px", color: "#293752" }}>{user.fullName}</h2>
-                  <div style={{ color: "#8390a5", fontSize: "13px" }}>{user.email}</div>
-                </div>
-              </div>
-              <div style={{ padding: "20px 0" }}>
-                {[
-                  ["Full name", user.fullName || "Not available"],
-                  ["Email address", user.email || "Not available"],
-                  ["Account role", user.role || "Alumni"],
-                  ["Account status", user.status || "Approved"]
-                ].map(([label, value]) => (
-                  <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: "15px", padding: "13px 0", borderBottom: "1px solid #f1f3f7", flexWrap: "wrap" }}>
-                    <span style={{ color: "#8390a5", fontSize: "13px" }}>{label}</span>
-                    <span style={{ color: "#34415b", fontSize: "13px", fontWeight: 700 }}>{value}</span>
-                  </div>
-                ))}
-              </div>
+
+            <div style={cardStyle}>
+              <h3>Logout</h3>
+              <p>Logout from your ReConnect Alumni account.</p>
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={dangerButton}
+              >
+                Logout
+              </button>
             </div>
-            <div style={{ ...styles.card, borderColor: "#ffe0e4" }}>
-              <h2 style={{ ...styles.heading, fontSize: "18px" }}>Sign out</h2>
-              <p style={{ ...styles.muted }}>Sign out of your ReConnect Alumni account on this device.</p>
-              <button type="button" onClick={handleLogout} style={styles.danger}>↪ &nbsp; Logout</button>
-            </div>
-          </>
+          </div>
         )}
       </main>
     </div>

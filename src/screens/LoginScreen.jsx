@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import "./LoginScreen.css";
 
@@ -21,30 +22,45 @@ function LoginScreen() {
       const response = await fetch("http://localhost:5000/api/login", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email,
           password,
-          role
-        })
+          role,
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Store logged-in user information
-        localStorage.setItem("user", JSON.stringify(data.user));
+        // Check whether the backend returned user information
+        const loggedInUser = data.user;
 
-        alert("Login successful!");
+        if (!loggedInUser) {
+          console.error("Login response:", data);
+          alert("Login response does not contain user information.");
+          return;
+        }
+
+        // Store logged-in user information
+        localStorage.setItem("user", JSON.stringify(loggedInUser));
+
+        // Get role and handle capitalization differences
+        const userRole = String(loggedInUser.role || role)
+          .trim()
+          .toLowerCase();
 
         // Redirect according to role
-        if (data.user.role === "Student") {
+        if (userRole === "student") {
           window.location.href = "/student-dashboard";
-        } else if (data.user.role === "Alumni") {
+        } else if (userRole === "alumni") {
           window.location.href = "/alumni-dashboard";
-        } else if (data.user.role === "Admin") {
+        } else if (userRole === "admin") {
           window.location.href = "/admin-dashboard";
+        } else {
+          console.error("Unknown user role:", loggedInUser.role, data);
+          alert("Unknown user role. Please check the backend login response.");
         }
       } else {
         alert(data.message || "Login failed.");
@@ -63,13 +79,11 @@ function LoginScreen() {
   return (
     <div className="login-page">
       <div className="login-box">
-
         <h1>ReConnect</h1>
 
         <h2>Login</h2>
 
         <form onSubmit={handleLogin}>
-
           <label>Login As</label>
 
           <select
@@ -88,6 +102,7 @@ function LoginScreen() {
             placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
           />
 
           <label>Password</label>
@@ -97,15 +112,16 @@ function LoginScreen() {
             placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
           />
 
           <button type="submit" disabled={loading}>
             {loading ? "Logging in..." : "Login"}
           </button>
-
         </form>
 
         <button
+          type="button"
           className="register-btn"
           onClick={() => {
             window.location.href = "/register";
@@ -113,7 +129,6 @@ function LoginScreen() {
         >
           Create New Account
         </button>
-
       </div>
     </div>
   );

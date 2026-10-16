@@ -1,3 +1,4 @@
+
 const mongoose = require("mongoose");
 
 const eventSchema = new mongoose.Schema(
@@ -23,9 +24,27 @@ const eventSchema = new mongoose.Schema(
       required: true
     },
 
+    // New fields for the actual event ending time.
+    // Optional so existing events remain compatible.
+    endDate: {
+      type: String,
+      default: ""
+    },
+
+    endTime: {
+      type: String,
+      default: ""
+    },
+
     location: {
       type: String,
       default: ""
+    },
+
+    capacity: {
+      type: Number,
+      min: 1,
+      default: 100
     },
 
     organizer: {
