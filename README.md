@@ -32,8 +32,7 @@ Install Node.js and configure a MongoDB database.
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/arjavibendre24-arch/ReConnect-System.git
-cd ReConnect-System
+git clone https://github.com/arjavibendre24-arch/ReConnect-Student-AlumniNetworkingPlatform.git
 ```
 
 ### 2. Install frontend dependencies
@@ -56,4 +55,6 @@ Set the MongoDB connection string and other required settings in the backend `.e
 Arjavi Bendre
 
 ## Repository
-https://github.com/arjavibendre24-arch/ReConnect-System
+https://github.com/arjavibendre24-arch/ReConnect-Student-AlumniNetworkingPlatform.git
+
+
