@@ -1,4 +1,4 @@
-# ReConnect – Beyond Graduation
+# ReConnect – Student-Alumni Networking Platform
 
 ## Project Overview
 ReConnect is a web-based platform that connects students and alumni for mentorship, career opportunities, and college events.
