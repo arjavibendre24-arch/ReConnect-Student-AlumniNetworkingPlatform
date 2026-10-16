@@ -1,16 +1,60 @@
-# React + Vite
+# ReConnect : Student - Alumni Networking Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+## Project Overview
+ReConnect is a web-based platform that connects students and alumni for mentorship, career opportunities, and college events.
 
-Currently, two official plugins are available:
+## Technologies Used
+- **Frontend:** React.js, HTML5, CSS3, Vite
+- **Backend:** Node.js, Express.js
+- **Database:** MongoDB
+- **API:** REST API
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Main Features
+- Student and alumni registration and login
+- Admin approval and user management
+- Student and alumni profile management
+- Alumni search and mentorship requests
+- Career opportunity sharing
+- Event hosting and registration
+- Notifications and event feedback
+- Administrative reports
 
-## React Compiler
+## Project Structure
+- `public/` – Static assets
+- `src/` – React frontend
+- `server/` – Backend server and related files
+- `package.json` – Frontend dependencies and scripts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## How to Run the Project Locally
 
-## Expanding the Oxlint configuration
+### Prerequisites
+Install Node.js and configure a MongoDB database.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### 1. Clone the repository
+```bash
+git clone https://github.com/arjavibendre24-arch/ReConnect-Student-AlumniNetworkingPlatform.git
+```
+
+### 2. Install frontend dependencies
+```bash
+npm install
+```
+
+### 3. Start the frontend
+```bash
+npm run dev
+```
+
+### 4. Start the backend
+Open another terminal and follow the backend setup instructions in the `server/` directory. Install the backend dependencies, configure the required environment variables, and run the server using the command specified in its `package.json` or server instructions.
+
+### 5. Configure the database
+Set the MongoDB connection string and other required settings in the backend `.env` file. Do not upload credentials or secrets to GitHub.
+
+## Developer
+Arjavi Bendre
+
+## Repository
+https://github.com/arjavibendre24-arch/ReConnect-Student-AlumniNetworkingPlatform.git
+
+

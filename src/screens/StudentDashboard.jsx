@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./StudentDashboard.css";
 
-const API = "http://localhost:5000/api";
+const API = "https://reconnect-system.onrender.com/api";
 
 const getUserId = (user) =>
   user?._id || user?.id || user?.userId || "";
