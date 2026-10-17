@@ -289,7 +289,9 @@ export default function StudentDashboard() {
   const [now, setNow] = useState(() => Date.now());
 
   const studentId = getUserId(user);
-
+ useEffect(() => {
+  if (message || error) window.scrollTo({ top: 0, behavior: "smooth" });
+}, [message, error]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(timer);
