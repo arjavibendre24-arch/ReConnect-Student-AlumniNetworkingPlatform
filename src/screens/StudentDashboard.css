@@ -83,3 +83,323 @@
 @media (max-width:1150px) { .dashboard-sidebar { width:220px; flex-basis:220px; }.dashboard-stats,.quick-links-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.welcome-art { margin-right:0; transform:scale(.88); transform-origin:right center; }.events-grid,.alumni-grid,.opportunities-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:760px) { .student-dashboard { display:block; }.dashboard-sidebar { position:relative; width:100%; height:auto; padding:16px; border-right:0; border-bottom:1px solid #ececf4; }.sidebar-brand { padding:0 8px 16px; }.dashboard-sidebar nav { display:flex; flex-direction:row; gap:6px; overflow-x:auto; padding-bottom:4px; }.sidebar-menu-item { width:auto; flex:0 0 auto; padding:10px 12px; }.menu-active-dot { display:none; }.sidebar-logout { margin-top:12px; }.dashboard-main { padding:20px 15px 30px; }.welcome-banner { padding:25px 22px; min-height:unset; }.welcome-art { display:none; }.dashboard-stats { gap:10px; }.stat-card { padding:14px; }.stat-card strong { font-size:27px; }.quick-links-grid { gap:10px; }.quick-link-card { min-height:145px; padding:14px; }.events-grid,.alumni-grid,.opportunities-grid { grid-template-columns:1fr; }.overview-note { display:none; }.empty-events-panel { align-items:flex-start; flex-wrap:wrap; }.empty-events-panel button { margin-left:69px; }.dashboard-header { margin-bottom:20px; } }
 @media (max-width:420px) { .dashboard-stats,.quick-links-grid { grid-template-columns:1fr 1fr; }.welcome-banner h2 { font-size:25px; }.section-heading h2 { font-size:18px; }.stat-label { font-size:11px; }.stat-foot { font-size:10px; } }
+/* ReConnect Student Dashboard Logo */
+
+.student-dashboard .sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.student-dashboard .student-brand-logo {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: white;
+
+  font-size: 26px;
+  font-weight: 800;
+
+  border-radius: 14px;
+  box-shadow: 0 5px 15px rgba(79, 70, 229, 0.25);
+}
+
+.student-dashboard .student-brand-text h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.student-dashboard .student-brand-text p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  opacity: 0.7;
+}
+/* ReConnect Logo in Student Dashboard Header */
+
+.student-dashboard .student-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.student-dashboard .student-header-logo {
+  width: 55px;
+  height: 55px;
+  min-width: 55px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: white;
+
+  font-size: 30px;
+  font-weight: 800;
+
+  border-radius: 16px;
+
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.25);
+}
+
+.student-dashboard .student-header-brand h1 {
+  margin: 0;
+}
+
+.student-dashboard .student-header-brand p {
+  margin: 5px 0 0;
+}
+
+@media (max-width: 480px) {
+  .student-dashboard .student-header-logo {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    font-size: 25px;
+    border-radius: 12px;
+  }
+}
+/* Student dashboard heading */
+.student-dashboard .student-header-brand {
+display: flex;
+align-items: center;
+gap: 0;
+}
+
+.student-dashboard .student-header-title {
+display: flex;
+flex-direction: column;
+gap: 7px;
+}
+
+.student-dashboard .student-header-eyebrow {
+color: #6654e8;
+font-size: 10px;
+font-weight: 800;
+letter-spacing: 2px;
+}
+
+.student-dashboard .student-header-brand h1 {
+margin: 0;
+color: #1c2440;
+font-family: 'Manrope', sans-serif;
+font-size: clamp(24px, 2.5vw, 32px);
+font-weight: 800;
+letter-spacing: -1px;
+}
+
+.student-dashboard .student-header-brand p {
+margin: 0;
+color: #77809a;
+font-size: 14px;
+line-height: 1.6;
+}
+
+.student-dashboard .dashboard-header > button {
+flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+.student-dashboard .dashboard-header {
+align-items: flex-start;
+gap: 12px;
+}
+
+.student-dashboard .student-header-brand h1 {
+font-size: 22px;
+}
+
+.student-dashboard .student-header-eyebrow {
+font-size: 9px;
+letter-spacing: 1.3px;
+}
+}
+css
+/* Elegant ReConnect R logo inside the welcome illustration */
+.welcome-art .student-welcome-logo {
+  width: 120px;
+  height: 120px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-size: 112px;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+
+  color: #8b5cf6;
+  background: linear-gradient(145deg, #a78bfa 10%, #6d28d9 55%, #d4a017 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  filter: drop-shadow(0 5px 8px rgba(109, 40, 217, 0.2));
+
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.welcome-art .student-welcome-logo:hover {
+  transform: scale(1.08);
+  filter: drop-shadow(0 7px 12px rgba(109, 40, 217, 0.35));
+}
+/* ===== Restyle overrides (CSS only) ===== */
+:root {
+  --rc-purple: #6d5ce7;
+  --rc-purple-soft: #f1eeff;
+  --rc-radius: 18px;
+}
+
+/* Sidebar: remove the duplicate ✦, tighten spacing, allow scrolling */
+.dashboard-sidebar {
+  overflow-y: auto;
+  padding: 24px 14px 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #faf9ff 100%);
+}
+.sidebar-brand h2:before { content: none; }
+.sidebar-brand { padding: 0 8px 24px; }
+.student-dashboard .student-brand-logo {
+  background: linear-gradient(135deg, #6d5ce7, #9b6bff);
+  font-family: 'Manrope', sans-serif;
+}
+.dashboard-sidebar nav { gap: 4px; }
+.sidebar-menu-item {
+  padding: 11px 14px;
+  font-size: 14px;
+}
+.sidebar-menu-item.active {
+  background: var(--rc-purple-soft);
+  box-shadow: none;
+  color: #5443d6;
+}
+.sidebar-menu-item.active .menu-item-icon {
+  background: #fff;
+  box-shadow: 0 2px 8px #6d5ce722;
+}
+.sidebar-logout { margin-top: 16px; }
+
+/* Header */
+.dashboard-header h1 { font-size: clamp(24px, 2.4vw, 32px); }
+.dashboard-header > button {
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6d5ce7, #8b6cf5);
+  color: #fff;
+  border: 0;
+  box-shadow: 0 6px 16px #6d5ce73a;
+}
+.dashboard-header > button:hover { filter: brightness(1.06); background: linear-gradient(135deg, #6d5ce7, #8b6cf5); }
+
+/* Welcome banner: richer gradient, softer glow, better text rhythm */
+.welcome-banner {
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 85% 20%, #9a8bff55, transparent 45%),
+    linear-gradient(115deg, #231f48 0%, #4a3f98 55%, #7867ee 100%);
+}
+.welcome-banner h2 { letter-spacing: -1px; line-height: 1.15; }
+.welcome-banner p { color: #e6e3ff; max-width: 520px; }
+.welcome-cta { border-radius: 12px; transition: transform .2s, box-shadow .2s; }
+.welcome-cta:hover { box-shadow: 0 10px 22px #17133946; }
+
+/* Cards: consistent radius, hover lift, colored top accents */
+.stat-card, .quick-link-card, .event-card,
+.alumni-card, .opportunity-card, .profile-card,
+.mentorship-card, .notification-card {
+  border-radius: var(--rc-radius);
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+.event-card:hover, .alumni-card:hover, .opportunity-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px #30305e14;
+  border-color: #d9d4fa;
+}
+.stat-violet { border-top: 3px solid #8b7bff; }
+.stat-blue   { border-top: 3px solid #4da3ff; }
+.stat-orange { border-top: 3px solid #ff9a4d; }
+.stat-green  { border-top: 3px solid #34c597; }
+
+/* Buttons inside cards */
+.event-card button, .alumni-card button, .opportunity-card button,
+.profile-card button, .profile-form button, .feedback-modal button,
+.event-registration-actions button, .event-feedback-section button {
+  background: linear-gradient(135deg, #6d5ce7, #8b6cf5);
+  border-radius: 10px;
+  transition: filter .2s, transform .2s;
+}
+.event-card button:hover, .alumni-card button:hover { filter: brightness(1.07); }
+.event-card button:disabled, .alumni-card button:disabled {
+  background: #d9d9e6; color: #8a8fa5; cursor: not-allowed;
+}
+
+/* Inputs: clear focus state */
+.dashboard-content input:focus,
+.dashboard-content textarea:focus,
+.dashboard-content select:focus {
+  outline: none;
+  border-color: var(--rc-purple);
+  box-shadow: 0 0 0 3px #6d5ce722;
+}
+
+/* Smooth scrolling + nicer scrollbar */
+html { scroll-behavior: smooth; }
+.dashboard-sidebar::-webkit-scrollbar { width: 6px; }
+.dashboard-sidebar::-webkit-scrollbar-thumb { background: #dcd8f5; border-radius: 6px; }
+/* ===== Professional R logo ===== */
+
+/* Big logo in the welcome banner */
+.welcome-art .student-welcome-logo {
+  width: 108px !important;
+  height: 108px !important;
+  border-radius: 30px !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  background-image: linear-gradient(145deg, rgba(255,255,255,0.28), rgba(255,255,255,0.08)) !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+  font-family: 'Manrope', sans-serif !important;
+  font-style: normal !important;
+  font-weight: 800 !important;
+  font-size: 58px !important;
+  letter-spacing: -2px;
+  filter: none !important;
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 18px 40px rgba(23, 18, 59, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transform: rotate(-6deg);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.welcome-art .student-welcome-logo:hover {
+  transform: rotate(0deg) scale(1.05);
+  box-shadow:
+    0 22px 46px rgba(23, 18, 59, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+/* Small logo in the sidebar */
+.student-dashboard .student-brand-logo {
+  background: linear-gradient(135deg, #6d5ce7, #9b6bff);
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  font-size: 24px;
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(109, 92, 231, 0.35);
+}
+
+/* Remove the extra ✦ so there's only one brand mark */
+.sidebar-brand h2:before { content: none; }
+.sidebar-brand p { margin-left: 0; }

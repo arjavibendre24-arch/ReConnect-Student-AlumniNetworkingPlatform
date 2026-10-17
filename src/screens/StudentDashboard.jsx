@@ -815,14 +815,42 @@ export default function StudentDashboard() {
     <div className="student-home">
       <section className="welcome-banner">
         <div className="welcome-copy">
-          <span className="eyebrow">YOUR STUDENT COMMUNITY</span>
           <h2>Build connections. <span>Shape your future.</span></h2>
           <p>Welcome back, {user?.fullName || user?.name || "Student"}! Pick up where you left off and make your next opportunity happen.</p>
           <button type="button" className="welcome-cta" onClick={() => goToSection("Search Alumni")}>Explore your network <span>→</span></button>
         </div>
         <div className="welcome-art" aria-hidden="true">
           <div className="orbit orbit-one"></div><div className="orbit orbit-two"></div>
-          <div className="welcome-emoji">🎓</div>
+          <div
+            className="student-welcome-logo"
+            style={{
+              width: "120px",
+              height: "120px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxSizing: "border-box",
+              background: "transparent",
+              border: "none",
+              borderRadius: 0,
+              color: "#8b5cf6",
+              fontFamily: "'Palatino Linotype', 'Book Antiqua', Georgia, serif",
+              fontSize: "112px",
+              fontWeight: 700,
+              fontStyle: "italic",
+              lineHeight: 1,
+              backgroundImage: "linear-gradient(145deg, #c4b5fd 5%, #7c3aed 48%, #d4a017 95%)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 5px 8px rgba(109, 40, 217, 0.24))",
+              position: "relative",
+              zIndex: 5,
+              flexShrink: 0,
+            }}
+          >
+            R
+          </div>
           <span className="float-chip chip-one">✦ Learn</span>
           <span className="float-chip chip-two">↗ Grow</span>
           <span className="float-chip chip-three">♡ Connect</span>
@@ -1344,8 +1372,11 @@ export default function StudentDashboard() {
     <div className="student-dashboard">
       <aside className="dashboard-sidebar">
         <div className="sidebar-brand">
-          <h2>ReConnect</h2>
-          <p>Student Portal</p>
+          <span className="student-brand-logo" aria-hidden="true">R</span>
+          <div className="student-brand-text">
+            <h2>ReConnect</h2>
+            <p>Student Portal</p>
+          </div>
         </div>
 
         <nav>
@@ -1379,8 +1410,10 @@ export default function StudentDashboard() {
       <main className="dashboard-main">
         <header className="dashboard-header">
           <div>
-            <h1>{activeSection}</h1>
-            <p>Welcome, {user?.fullName || user?.name || "Student"}</p>
+            <h1>
+              {activeSection === "Dashboard" ? "Your Student Community" : activeSection}
+            </h1>
+            <p>Welcome back, {user?.fullName || user?.name || "Student"}!</p>
           </div>
 
           <button type="button" onClick={loadAllData} disabled={loading}>

@@ -1,393 +1,143 @@
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f8fafc;
-  color: #172033;
+/* ReConnect landing page only. Styles are scoped under .app to avoid affecting dashboards. */
+.app{--ink:#142341;--blue:#3867f6;--violet:#8061e9;--muted:#63738e;color:var(--ink);background:#f7f9ff;min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:hidden}
+.app *{box-sizing:border-box}.app a{text-decoration:none}.app button,.app a{transition:transform .2s ease,box-shadow .2s ease,background .2s ease}.app a:focus-visible{outline:3px solid #ffbf47;outline-offset:4px}.app .navbar{height:78px;padding:0 max(5%,calc((100vw - 1320px)/2));display:flex;justify-content:space-between;align-items:center;background:#fff;border-bottom:1px solid #eaf0ff;position:relative;z-index:10}.app .logo{display:flex;align-items:center;gap:11px;font-size:25px;font-weight:850;letter-spacing:-1px;color:#172746}.app .logo-symbol{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:linear-gradient(145deg,#3867f6,#8059df);color:#fff;font-size:23px;box-shadow:0 7px 18px #4e67e433}.app .logo-accent{color:#4267ee}.app .nav-links{display:flex;align-items:center;gap:33px}.app .nav-links>a{font-size:14px;font-weight:650;color:#465775}.app .nav-links>a:hover{color:#3867f6}.app .nav-links .login-btn{padding:12px 23px;border-radius:12px;background:#3867f6;color:white;box-shadow:0 8px 20px #3867f62e}.app .login-btn:hover,.app .primary-btn:hover,.app .role-link:hover{transform:translateY(-2px);box-shadow:0 12px 24px #3867f64a}
+.app .hero{position:relative;isolation:isolate;background:linear-gradient(117deg,#0c1e4b 0%,#243b92 52%,#5039a2 100%);overflow:hidden}.app .hero-glow{position:absolute;pointer-events:none;border-radius:50%;filter:blur(6px);opacity:.5}.app .hero-glow-one{width:680px;height:680px;background:radial-gradient(circle,#4176ff70,transparent 65%);top:-350px;right:-150px}.app .hero-glow-two{width:640px;height:640px;background:radial-gradient(circle,#9563e45e,transparent 65%);bottom:-400px;left:-250px}.app .hero-inner{max-width:1320px;margin:auto;min-height:650px;padding:90px 5%;display:grid;grid-template-columns:1.08fr .92fr;align-items:center;gap:65px;position:relative;z-index:1}.app .hero-content{max-width:650px}.app .welcome{display:inline-flex;align-items:center;gap:9px;border:1px solid #b5c7ff48;background:#ffffff12;color:#e0e9ff;border-radius:30px;padding:10px 17px;font-size:11px;font-weight:800;letter-spacing:2.2px}.app .welcome-dot{height:8px;width:8px;border-radius:50%;background:#6cf1bf;box-shadow:0 0 12px #6cf1bf}.app .hero h1{font-size:clamp(44px,5vw,75px);letter-spacing:-3.6px;line-height:1.09;margin:25px 0;color:#fff;font-weight:850}.app .hero-gradient-text{display:block;background:linear-gradient(90deg,#b8d7ff,#e0c0ff 75%);color:transparent;background-clip:text}.app .description{font-size:17px;line-height:1.9;color:#d5def6;max-width:570px;margin:0}.app .hero-buttons{display:flex;gap:14px;flex-wrap:wrap;margin-top:34px}.app .primary-btn,.app .secondary-btn{display:inline-flex;align-items:center;justify-content:center;gap:16px;padding:16px 24px;border-radius:13px;font-size:14px;font-weight:750}.app .primary-btn{color:#18377e;background:#fff;box-shadow:0 12px 24px #09133730}.app .secondary-btn{color:#fff;border:1px solid #c4d1ff6e;background:#ffffff0d}.app .secondary-btn:hover{background:#ffffff21;transform:translateY(-2px)}.app .hero-footnote{display:flex;align-items:center;gap:16px;margin-top:44px;color:#c4d2f5;font-size:13px}.app .hero-avatars{display:flex;padding-left:6px}.app .hero-avatars b{display:grid;place-items:center;margin-left:-6px;width:34px;height:34px;border:2px solid #273b82;border-radius:50%;background:#e8edff;font-size:15px}.app .hero-visual{position:relative;min-height:460px;display:grid;place-items:center}.app .visual-grid{position:absolute;inset:0;background-image:radial-gradient(#d4dcff4a 1px,transparent 1px);background-size:24px 24px;mask-image:radial-gradient(ellipse,black,transparent 75%)}.app .visual-main-card{width:min(100%,390px);min-height:405px;border:1px solid #ffffff5e;border-radius:28px;background:linear-gradient(140deg,#ffffffef,#e9edffed);box-shadow:0 30px 75px #080f4169;padding:24px;position:relative;text-align:center;transform:rotate(-2deg)}.app .visual-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.app .visual-label{font-size:10px;font-weight:850;letter-spacing:2px;color:#65739a}.app .live-dot{font-size:10px;font-weight:700;color:#159a73;background:#dff9ef;padding:7px 9px;border-radius:20px}.app .visual-orbit{height:245px;position:relative;display:grid;place-items:center}.app .orbit-ring{position:absolute;border-radius:50%;border:1px dashed #8ca8ee}.app .orbit-ring-outer{width:224px;height:224px}.app .orbit-ring-inner{width:158px;height:158px;border-color:#b8c8f4}.app .orbit-center{display:grid;place-items:center;width:96px;height:96px;border-radius:27px;background:linear-gradient(135deg,#3267ef,#7654d9);color:#fff;font-size:54px;font-weight:900;box-shadow:0 14px 25px #5270da66}.app .orbit-node{position:absolute;width:53px;height:53px;border-radius:17px;display:grid;place-items:center;background:white;box-shadow:0 8px 25px #233d8129;font-size:24px}.app .orbit-student{left:42px;top:35px}.app .orbit-alumni{right:38px;top:75px}.app .orbit-growth{left:110px;bottom:6px;color:#8654da;font-size:30px}.app .visual-main-card h2{font-size:25px;letter-spacing:-.8px;margin:0 0 9px;color:#1d315e}.app .visual-main-card p{color:#7181a3;font-size:13px;margin:0}.app .floating-note{position:absolute;display:flex;align-items:center;gap:12px;padding:13px 18px;background:#fff;border-radius:15px;box-shadow:0 16px 35px #09143b57;z-index:2}.app .floating-note>span{display:grid;place-items:center;width:37px;height:37px;border-radius:11px;background:#e9e7ff;color:#7656e5;font-weight:900;font-size:21px}.app .floating-note strong,.app .floating-note small{display:block}.app .floating-note strong{font-size:12px;color:#1b3158}.app .floating-note small{font-size:10px;color:#7685a2;margin-top:3px}.app .note-mentor{top:38px;left:-15px;transform:rotate(-5deg)}.app .note-career{bottom:28px;right:-15px;transform:rotate(4deg)}.app .hero-bottom-line{height:4px;background:linear-gradient(90deg,#62cfff,#8b79ff,#c993ff)}
+.app .benefits-strip{display:flex;justify-content:center;flex-wrap:wrap;gap:18px 55px;background:#fff;border-bottom:1px solid #e9edfa;padding:25px 5%;font-size:13px;color:#566681;font-weight:650}.app .benefits-strip span{color:#6a60e5;font-size:19px;margin-right:7px}.app .roles{padding:105px 5% 110px;text-align:center;max-width:1450px;margin:auto}.app .section-kicker{font-size:12px;letter-spacing:2.5px;font-weight:850;color:#5a65e9}.app .roles h2,.app .about h2{font-size:clamp(32px,3.6vw,48px);letter-spacing:-1.7px;line-height:1.18;margin:15px 0}.app .roles h2 span,.app .about h2 span{color:#5b66e9}.app .section-text{max-width:640px;margin:0 auto 47px;color:#697994;line-height:1.8;font-size:15px}.app .role-container{max-width:1200px;margin:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;text-align:left}.app .role-card{display:flex;flex-direction:column;padding:32px;background:#fff;border:1px solid #e4eafb;border-radius:24px;box-shadow:0 15px 40px #2037650b;transition:transform .25s,box-shadow .25s}.app .role-card:hover{transform:translateY(-8px);box-shadow:0 23px 48px #253e7a1c}.app .role-card-head{display:flex;align-items:center;justify-content:space-between}.app .role-icon{display:grid;place-items:center;width:60px;height:60px;border-radius:17px;background:#e9efff;color:#4867f3;font-size:30px}.app .alumni .role-icon{background:#f0eaff;color:#8a59d7}.app .admin .role-icon{background:#e6f8f5;color:#139e88}.app .role-tag{font-size:10px;font-weight:800;letter-spacing:1px;color:#7b88a2}.app .role-card h3{font-size:25px;letter-spacing:-.7px;margin:27px 0 10px}.app .role-card>p{font-size:14px;line-height:1.85;color:#6a7891;min-height:105px;margin:0}.app .role-card ul{list-style:none;padding:0;margin:14px 0 28px}.app .role-card li{display:flex;gap:11px;align-items:center;margin:12px 0;color:#475975;font-size:13px;font-weight:600}.app .role-card li span{color:#1eae87;font-weight:900}.app .role-link{display:flex;justify-content:space-between;align-items:center;padding:15px 18px;margin-top:auto;background:#3d66ef;color:#fff;border-radius:12px;font-size:13px;font-weight:750}.app .alumni .role-link{background:#785be1}.app .admin .role-link{background:#168f89}
+.app .about{padding:0 5% 95px}.app .about-panel{max-width:1200px;margin:auto;padding:65px 70px;border-radius:28px;background:linear-gradient(120deg,#eaf0ff,#f2eaff);display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}.app .about h2{margin-bottom:0}.app .about-copy p{color:#586985;font-size:15px;line-height:1.95;margin:0 0 22px}.app .about-copy a{font-weight:800;color:#4d60e5}.app .about-copy a span{margin-left:10px}.app .site-footer{padding:29px 5%;display:flex;align-items:center;justify-content:space-between;gap:20px;background:#101e3b;color:#b6c4e2;font-size:12px}.app .footer-brand{font-size:20px;font-weight:850;color:#fff}.app .footer-brand span{color:#96a7ff}.app .site-footer>a:last-child{color:#dce4ff;font-weight:700}
+@media(max-width:1050px){.app .hero-inner{gap:25px}.app .hero h1{font-size:clamp(42px,5.4vw,64px)}.app .note-mentor{left:0}.app .note-career{right:0}.app .role-card{padding:25px}.app .role-card>p{min-height:145px}}
+@media(max-width:800px){.app .navbar{padding:0 5%}.app .nav-links{gap:15px}.app .hero-inner{grid-template-columns:1fr;padding:75px 6% 65px;text-align:center}.app .hero-content{margin:auto}.app .hero h1{letter-spacing:-2px}.app .hero-buttons,.app .hero-footnote{justify-content:center}.app .hero-visual{max-width:500px;width:100%;margin:auto}.app .role-container{grid-template-columns:1fr;max-width:500px}.app .role-card>p{min-height:0}.app .about-panel{grid-template-columns:1fr;padding:45px 35px;gap:20px}.app .site-footer{flex-wrap:wrap;justify-content:center;text-align:center}}
+@media(max-width:520px){.app .navbar{height:auto;min-height:72px;flex-wrap:wrap;gap:10px;padding:14px 5%}.app .logo{font-size:21px}.app .nav-links{width:100%;justify-content:space-between;gap:8px}.app .nav-links>a{font-size:12px}.app .nav-links .login-btn{padding:10px 14px}.app .hero-inner{padding:60px 6%}.app .hero h1{font-size:43px;letter-spacing:-2px}.app .description{font-size:15px}.app .hero-buttons{flex-direction:column}.app .primary-btn,.app .secondary-btn{width:100%}.app .hero-visual{min-height:390px}.app .visual-main-card{min-height:360px;padding:18px;width:88%}.app .visual-orbit{height:220px}.app .note-mentor{top:0}.app .note-career{bottom:0}.app .benefits-strip{gap:15px;padding:22px 7%}.app .benefits-strip>div{width:42%;font-size:11px}.app .roles{padding:75px 5%}.app .role-card{padding:26px}.app .about{padding:0 5% 65px}.app .about-panel{padding:36px 25px}}
+@media(prefers-reduced-motion:reduce){.app *{transition:none!important;scroll-behavior:auto!important}}
+/* ===== Professional landing page refinements (CSS only) ===== */
+
+/* Navbar */
+.app .navbar { height: 72px; box-shadow: 0 1px 0 #eaf0ff, 0 6px 20px #1423410a; }
+.app .logo { font-weight: 800; letter-spacing: -0.5px; }
+.app .nav-links > a { font-weight: 600; }
+.app .nav-links .login-btn { padding: 11px 22px; font-weight: 700; }
+
+/* Hero layout */
+.app .hero-inner { padding: 80px 5%; gap: 56px; min-height: 620px; }
+
+/* Welcome pill */
+.app .welcome {
+  letter-spacing: 1.6px;
+  font-weight: 700;
+  padding: 9px 16px;
+  background: #ffffff14;
 }
 
-.app {
-  min-height: 100vh;
-  background: #f8fafc;
+/* Headline: fixes the touching letters */
+.app .hero h1 {
+  font-size: clamp(40px, 4.6vw, 64px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.12;
+  margin: 22px 0;
+}
+.app .hero-gradient-text {
+  background: linear-gradient(90deg, #a9ccff, #d3b6ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.navbar {
-  height: 70px;
-  padding: 0 7%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.logo {
-  font-size: 25px;
-  font-weight: bold;
-  color: #2563eb;
-}
-
-.nav-links {
-  display: flex;
-  gap: 25px;
-  align-items: center;
-}
-
-.nav-links a {
-  text-decoration: none;
-  color: #475569;
-  font-weight: 600;
-}
-
-.login-btn {
-  background: #2563eb;
-  color: white !important;
-  padding: 10px 20px;
-  border-radius: 8px;
-}
-
-.hero {
-  padding: 80px 7%;
-  min-height: 500px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 50px;
-  background: white;
-}
-
-.hero-content {
-  max-width: 650px;
-}
-
-.welcome {
-  font-weight: bold;
-  margin-bottom: 15px;
-}
-
-/* WELCOME TO RECONNECT */
-.highlight {
-  color: #ffcc00;
-  font-weight: bold;
-  letter-spacing: 2px;
-}
-
-.hero h1 {
-  font-size: 55px;
-  line-height: 1.1;
-  margin: 15px 0;
-}
-
-.description {
-  color: #000000;
+/* Paragraph */
+.app .description {
   font-size: 17px;
   line-height: 1.7;
+  color: #cfd9f4;
+  max-width: 540px;
 }
 
-.hero-buttons {
-  display: flex;
-  gap: 15px;
-  margin-top: 25px;
-}
-
-.primary-btn,
-.secondary-btn {
-  padding: 13px 22px;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: bold;
-}
-
-.primary-btn {
-  background: #2563eb;
-  color: white;
-}
-
-.secondary-btn {
-  border: 1px solid #000000;
-  color: #000000;
-}
-
-.hero-card {
-  width: 330px;
-  height: 330px;
-  background: #eff6ff;
-  border-radius: 30px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.circle {
-  width: 130px;
-  height: 130px;
-  background: #2563eb;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.circle span {
-  color: white;
-  font-size: 55px;
-  font-weight: bold;
-}
-
-/* ReConnect heading in card */
-.hero-card h2 {
-  margin-top: 20px;
-  color: #2563eb;
-}
-
-.hero-card p {
-  color: #64748b;
-}
-
-.roles {
-  padding: 80px 7%;
-  text-align: center;
-  background: #f8fafc;
-}
-
-.roles h2 {
-  font-size: 36px;
-}
-
-.section-text {
-  color: #64748b;
-  margin-bottom: 40px;
-}
-
-.role-container {
-  max-width: 1100px;
-  margin: auto;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 25px;
-}
-
-.role-card {
-  background: white;
-  padding: 30px;
-  border-radius: 18px;
-  text-align: left;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
-}
-
-.role-card:hover {
-  transform: translateY(-5px);
-}
-
-.role-icon {
-  width: 60px;
-  height: 60px;
-  background: #eff6ff;
-  border-radius: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 30px;
-}
-
-.role-card h3 {
-  font-size: 21px;
-  margin: 20px 0 10px;
-}
-
-.role-card p {
-  color: #64748b;
-  line-height: 1.6;
-  min-height: 65px;
-}
-
-.role-card button {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  background: #2563eb;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.about {
-  padding: 80px 7%;
-  text-align: center;
-  background: white;
-}
-
-.about h2 {
-  font-size: 36px;
-}
-
-.about p {
-  max-width: 800px;
-  margin: auto;
-  color: #64748b;
-  line-height: 1.8;
-}
-
-footer {
-  padding: 25px;
-  text-align: center;
-  background: #172033;
-  color: white;
-}
-
-@media (max-width: 900px) {
-  .hero {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .role-container {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-buttons {
-    justify-content: center;
-  }
-}
-
-
-/* ========================================
-   HOMEPAGE HERO ALIGNMENT FIX
-   Frontend styling only
-======================================== */
-
-.hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  align-items: center;
-  gap: 48px;
-  padding: 70px 6%;
-  min-height: 590px;
-  box-sizing: border-box;
-}
-
-.hero-content {
-  width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.hero-content .welcome {
-  width: 100%;
-  margin: 0 0 18px;
-  text-align: center;
-}
-
-.hero-content .highlight {
-  display: inline-block;
-  text-align: center;
-  letter-spacing: 3px;
+/* Buttons */
+.app .hero-buttons { margin-top: 30px; }
+.app .primary-btn, .app .secondary-btn {
+  padding: 15px 24px;
+  border-radius: 12px;
   font-weight: 700;
+  gap: 12px;
+}
+.app .secondary-btn { border-color: #c4d1ff59; }
+.app .hero-footnote { margin-top: 38px; color: #b9c8ee; }
+
+/* Right-side visual: no tilt, no overlap */
+.app .hero-visual { min-height: 520px; padding: 40px 0; }
+.app .visual-main-card {
+  transform: none;
+  width: min(100%, 380px);
+  min-height: 400px;
+  padding: 24px 24px 30px;
+  border-radius: 26px;
+  background: linear-gradient(160deg, #ffffff, #eef1ff);
+  box-shadow: 0 30px 70px #0a113e55;
+}
+.app .visual-label { letter-spacing: 1.6px; }
+.app .orbit-center { border-radius: 24px; font-size: 48px; }
+.app .visual-main-card h2 { font-size: 24px; letter-spacing: -0.4px; }
+.app .visual-main-card p { font-size: 13px; }
+
+/* Floating notes: sit on the card edges, away from its text */
+.app .floating-note {
+  transform: none;
+  padding: 11px 16px;
+  border-radius: 14px;
+  gap: 11px;
+  box-shadow: 0 14px 30px #09143b45;
+}
+.app .note-mentor { top: 4px; left: -26px; }
+.app .note-career { bottom: 4px; right: -26px; }
+
+/* Remove the cut-off/clutter at small sizes */
+@media (max-width: 1050px) {
+  .app .note-mentor { left: 0; }
+  .app .note-career { right: 0; }
+}
+@media (max-width: 800px) {
+  .app .hero h1 { letter-spacing: -1px; }
+  .app .hero-visual { min-height: 460px; }
+}
+@media (max-width: 520px) {
+  .app .floating-note { display: none; }
+  .app .hero h1 { font-size: 38px; }
 }
 
-.hero-content h1 {
-  width: 100%;
-  margin: 0 0 24px;
-  text-align: center;
-  line-height: 1.12;
-  font-size: clamp(38px, 4.2vw, 68px);
-  font-weight: 750;
+/* Lower sections */
+.app .roles h2, .app .about h2 { letter-spacing: -1px; font-weight: 800; }
+.app .role-card { border-radius: 20px; }
+.app .role-card h3 { font-weight: 800; letter-spacing: -0.4px; }
+.app .role-card:hover { transform: translateY(-5px); }
+.app .site-footer { padding: 26px 5%; }
+/* ===== Final polish (CSS only) ===== */
+
+/* Pull the hero content closer to the navbar */
+.app .hero-inner { min-height: 560px; padding: 64px 5% 72px; }
+
+/* Keep the card and the two notes as one tidy group */
+.app .hero-visual { min-height: 460px; padding: 0; }
+.app .note-mentor { top: -6px; left: -10px; }
+.app .note-career { bottom: -6px; right: -10px; }
+
+/* The Opportunities note slightly overlaps the card's text area; give the card room */
+.app .visual-main-card { min-height: 420px; padding-bottom: 44px; }
+
+/* Make the glass notes feel part of the card */
+.app .floating-note {
+  border: 1px solid #ffffff80;
+  box-shadow: 0 12px 28px #09143b40;
 }
 
-.hero-content .description {
-  width: 100%;
-  max-width: 700px;
-  margin: 0 auto 30px;
-  text-align: center;
-  line-height: 1.8;
-  font-size: 18px;
+/* Benefits strip was being cut off: give it breathing room */
+.app .benefits-strip {
+  padding: 28px 5%;
+  gap: 16px 48px;
+  line-height: 1.4;
 }
+.app .benefits-strip > div { display: flex; align-items: center; }
 
-.hero-buttons {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 18px;
-  width: 100%;
-}
+/* Softer gradient bar under the hero */
+.app .hero-bottom-line { height: 3px; }
 
-.hero-buttons .primary-btn,
-.hero-buttons .secondary-btn {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 54px;
-  padding: 0 26px;
-  box-sizing: border-box;
-  text-decoration: none;
-  border-radius: 10px;
-  font-weight: 600;
-  text-align: center;
-}
-
-.hero-card {
-  width: 100%;
-  max-width: 360px;
-  min-height: 360px;
-  margin: 0 auto;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-/* Responsive layout for tablets and mobile */
-@media (max-width: 900px) {
-  .hero {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 36px;
-    padding: 55px 6%;
-  }
-
-  .hero-content {
-    max-width: 720px;
-  }
-
-  .hero-card {
-    max-width: 320px;
-    min-height: 300px;
-  }
-}
-
-@media (max-width: 480px) {
-  .hero {
-    padding: 40px 20px;
-  }
-
-  .hero-content .highlight {
-    letter-spacing: 2px;
-    font-size: 13px;
-  }
-
-  .hero-content h1 {
-    font-size: 38px;
-  }
-
-  .hero-content .description {
-    font-size: 16px;
-    line-height: 1.7;
-  }
-
-  .hero-buttons {
-    gap: 12px;
-  }
-
-  .hero-buttons .primary-btn,
-  .hero-buttons .secondary-btn {
-    padding: 0 18px;
-  }
-}
+/* Navbar: align logo and links vertically */
+.app .navbar { align-items: center; }
+.app .logo-symbol { width: 38px; height: 38px; font-size: 21px; border-radius: 12px; }

@@ -120,32 +120,90 @@ app.post("/api/register", async (req, res) => {
 });
 
 // LOGIN
+
 app.post("/api/login", async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password, role } = req.body || {};
+
     if (!email || !password || !role) {
-      return res.status(400).json({ message: "Email, password and role are required." });
+      return res.status(400).json({
+        message: "Email, password and role are required."
+      });
     }
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
-    if (!user || user.role !== role) {
-      return res.status(401).json({ message: "Invalid email, password or selected role." });
+
+    if (mongoose.connection.readyState !== 1) {
+      console.error("Login failed: MongoDB is not connected.");
+      return res.status(503).json({
+        message: "Database is temporarily unavailable."
+      });
     }
-    if (user.status === "Pending") {
-      return res.status(403).json({ message: "Your account is waiting for admin approval." });
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedRole = String(role).trim().toLowerCase();
+
+    // Explicitly retrieve password even if the schema hides it by default.
+    const user = await User.findOne({
+      email: normalizedEmail
+    }).select("+password");
+
+    if (!user) {
+      return res.status(401).json({
+        message: "Invalid email, password or selected role."
+      });
     }
-    if (user.status === "Rejected") {
-      return res.status(403).json({ message: "Your account has been rejected by the admin." });
+
+    if (String(user.role || "").trim().toLowerCase() !== normalizedRole) {
+      return res.status(401).json({
+        message: "Invalid email, password or selected role."
+      });
     }
-    if (!(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "Invalid email or password." });
+
+    if (String(user.status || "").toLowerCase() === "pending") {
+      return res.status(403).json({
+        message: "Your account is waiting for admin approval."
+      });
     }
-    res.json({
+
+    if (String(user.status || "").toLowerCase() === "rejected") {
+      return res.status(403).json({
+        message: "Your account has been rejected by the admin."
+      });
+    }
+
+    if (typeof user.password !== "string" || !user.password) {
+      console.error("Login failed: password hash is missing for", normalizedEmail);
+      return res.status(500).json({
+        message: "Account password data is missing. Check the User model."
+      });
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      String(password),
+      user.password
+    );
+
+    if (!passwordMatches) {
+      return res.status(401).json({
+        message: "Invalid email or password."
+      });
+    }
+
+    return res.status(200).json({
       message: "Login successful.",
-      user: { _id: user._id, fullName: user.fullName, email: user.email, role: user.role, status: user.status }
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        status: user.status
+      }
     });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({ message: "Login failed." });
+    return res.status(500).json({
+      message: "Login failed.",
+      error: error.message
+    });
   }
 });
 

@@ -1,3838 +1,2070 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 
 const API = "https://reconnect-system.onrender.com/api";
 
-const sections = [
+const COLORS = {
+  blue: "#4169e1",
+  purple: "#7654d6",
+  green: "#159c78",
+  orange: "#e99536",
+  red: "#dc4c58",
+  ink: "#202b45",
+  muted: "#77839b",
+  border: "#e8edf5",
+  bg: "#f4f7fc",
+};
 
-  { name: "Dashboard", icon: "⌂" },
-
-  { name: "Validate Users", icon: "✓" },
-
-  { name: "Manage Users", icon: "♙" },
-
-  { name: "Mentorship Requests", icon: "◎" },
-
-  { name: "Opportunities", icon: "▣" },
-
-  { name: "Events", icon: "▦" },
-
-  { name: "Event Feedback", icon: "★" },
-
-  { name: "Notifications", icon: "♧" },
-
-  { name: "Generate Reports", icon: "▤" }
-
+const NAVIGATION = [
+  { id: "dashboard", label: "Dashboard", icon: "⌂", group: "WORKSPACE" },
+  { id: "validate", label: "Validate Users", icon: "✓", group: "WORKSPACE" },
+  { id: "users", label: "Manage Users", icon: "♙", group: "WORKSPACE" },
+  { id: "mentorships", label: "Mentorship Requests", icon: "♧", group: "WORKSPACE" },
+  { id: "opportunities", label: "Opportunities", icon: "▣", group: "MANAGEMENT" },
+  { id: "events", label: "Events", icon: "▦", group: "MANAGEMENT" },
+  { id: "feedback", label: "Event Feedback", icon: "☆", group: "MANAGEMENT" },
+  { id: "notifications", label: "Notifications", icon: "♧", group: "MANAGEMENT" },
+  { id: "reports", label: "Generate Reports", icon: "▤", group: "REPORTS" },
 ];
 
-const colors = {
+const safeArray = (data) =>
+  Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
 
-  blue: "#4169e1",
+const getId = (item) => item?._id || item?.id || item?.userId || "";
 
-  purple: "#7654d6",
+const getName = (item) =>
+  item?.name ||
+  item?.fullName ||
+  item?.username ||
+  item?.title ||
+  item?.email ||
+  "Not available";
 
-  green: "#159c78",
+const getStatus = (item) =>
+  String(item?.status || "Pending").toLowerCase();
 
-  orange: "#e99536",
-
-  red: "#dc4c58",
-
-  ink: "#202b45",
-
-  muted: "#77839b",
-
-  border: "#e8edf5",
-
-  bg: "#f4f7fc"
-
+const formatDate = (value) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
 };
 
-const getFeedbackList = (data) => {
-
-  if (Array.isArray(data)) return data;
-
-  if (Array.isArray(data?.feedback)) return data.feedback;
-
-  if (Array.isArray(data?.eventFeedback)) return data.eventFeedback;
-
-  if (Array.isArray(data?.feedbacks)) return data.feedbacks;
-
-  if (Array.isArray(data?.data)) return data.data;
-
-  return [];
-
+const formatDateTime = (value) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 };
 
-const getStudent = (item) =>
+function readUser() {
+  try {
+    return (
+      JSON.parse(localStorage.getItem("user") || "null") ||
+      JSON.parse(localStorage.getItem("loggedInUser") || "null") ||
+      {}
+    );
+  } catch {
+    return {};
+  }
+}
 
-  typeof item?.studentId === "object" && item.studentId !== null
+function StatusBadge({ status }) {
+  const normalized = String(status || "Pending").toLowerCase();
 
-    ? item.studentId
-
-    : item?.student || item?.user || {};
-
-const getFeedbackEvent = (item) =>
-
-  typeof item?.eventId === "object" && item.eventId !== null
-
-    ? item.eventId
-
-    : item?.event || {};
-
-const getStudentName = (item) => {
-
-  const student = getStudent(item);
+  const style =
+    normalized === "approved" ||
+    normalized === "accepted" ||
+    normalized === "published" ||
+    normalized === "active"
+      ? { background: "#e4f7ee", color: "#14845f" }
+      : normalized === "rejected" ||
+          normalized === "declined" ||
+          normalized === "cancelled"
+        ? { background: "#ffebed", color: "#c43848" }
+        : normalized === "read" ||
+            normalized === "completed"
+          ? { background: "#e9efff", color: "#4169e1" }
+          : { background: "#fff3dc", color: "#a96b10" };
 
   return (
-
-    student.fullName ||
-
-    student.name ||
-
-    item.studentName ||
-
-    item.userName ||
-
-    "Unknown student"
-
+    <span className="rc-status" style={style}>
+      {status || "Pending"}
+    </span>
   );
+}
 
-};
+function EmptyState({ title, description }) {
+  return (
+    <div className="rc-empty">
+      <div className="rc-empty-icon">▤</div>
+      <h3>{title}</h3>
+      <p>{description}</p>
+    </div>
+  );
+}
 
-const getStudentEmail = (item) => {
+function DataTable({
+  columns,
+  rows,
+  emptyTitle = "No records found",
+  emptyDescription = "Records will appear here when available.",
+}) {
+  if (!rows.length) {
+    return (
+      <EmptyState
+        title={emptyTitle}
+        description={emptyDescription}
+      />
+    );
+  }
 
-  const student = getStudent(item);
-
-  return student.email || item.studentEmail || "Email not available";
-
-};
-
-const getEventTitle = (item) => {
-
-  const event = getFeedbackEvent(item);
-
-  return event.title || item.eventTitle || "Event";
-
-};
-
-const getRating = (item) =>
-
-  Number(item.rating ?? item.ratings ?? item.stars ?? 0);
-
-const getComments = (item) =>
-
-  item.comments ??
-
-  item.comment ??
-
-  item.feedback ??
-
-  item.message ??
-
-  item.review ??
-
-  "";
+  return (
+    <div className="rc-table-wrap">
+      <table className="rc-table">
+        <thead>
+          <tr>
+            {columns.map((column) => (
+              <th key={column.key}>{column.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={getId(row) || index}>
+              {columns.map((column) => (
+                <td key={column.key}>
+                  {column.render
+                    ? column.render(row, index)
+                    : row[column.key] ?? "—"}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
-
-  const [section, setSection] = useState("Dashboard");
+  const [user] = useState(readUser);
+  const [activeSection, setActiveSection] = useState("dashboard");
 
   const [stats, setStats] = useState({});
-
   const [users, setUsers] = useState([]);
-
   const [mentorships, setMentorships] = useState([]);
-
   const [opportunities, setOpportunities] = useState([]);
-
   const [events, setEvents] = useState([]);
-
   const [notifications, setNotifications] = useState([]);
+  const [feedback, setFeedback] = useState([]);
 
-  const [eventFeedback, setEventFeedback] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
 
-  // State used by the event participation and report section.
-  const [eventReports, setEventReports] = useState([]);
-
+  const [reportData, setReportData] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
 
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const [loading, setLoading] = useState(false);
+  const adminName =
+    user?.name ||
+    user?.fullName ||
+    user?.username ||
+    "ReConnect Admin";
 
-  const [message, setMessage] = useState("");
-
-  const [filter, setFilter] = useState("All");
-
-  const [search, setSearch] = useState("");
-
-  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-
-  const adminName = storedUser.fullName || "Administrator";
-
-  const card = {
-
-    background: "#fff",
-
-    border: `1px solid ${colors.border}`,
-
-    borderRadius: 18,
-
-    padding: 22,
-
-    boxShadow: "0 5px 22px rgba(35,55,95,.045)"
-
-  };
-
-  const button = {
-
-    border: 0,
-
-    borderRadius: 10,
-
-    padding: "10px 15px",
-
-    fontWeight: 700,
-
-    cursor: "pointer",
-
-    fontSize: 13,
-
-    transition: "all .2s"
-
-  };
+  const adminEmail = user?.email || "Administrator";
 
   async function request(path, options = {}) {
-
     const response = await fetch(`${API}${path}`, {
-
       ...options,
-
       headers: {
-
         "Content-Type": "application/json",
-
-        ...(options.headers || {})
-
-      }
-
+        ...(options.headers || {}),
+      },
     });
 
-    const data = await response.json();
+    const raw = await response.text();
+    let data = {};
+
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      data = { message: raw };
+    }
 
     if (!response.ok) {
-
-      throw new Error(data.message || "Request failed.");
-
+      throw new Error(
+        data?.message ||
+          data?.error ||
+          `Request failed (${response.status})`
+      );
     }
 
     return data;
-
   }
 
-  async function loadStats() {
+  async function loadDashboard(showSpinner = true) {
+    if (showSpinner) setLoading(true);
 
-    const data = await request("/admin/stats");
+    setError("");
 
-    setStats(data);
+    const results = await Promise.allSettled([
+      request("/admin/stats"),
+      request("/admin/users"),
+      request("/admin/mentorships"),
+      request("/admin/opportunities"),
+      request("/admin/events"),
+      request("/admin/notifications"),
+      request("/admin/event-feedback"),
+    ]);
 
-  }
+    const setters = [
+      (data) => setStats(data?.stats || data?.data || data || {}),
+      (data) => setUsers(safeArray(data?.users || data)),
+      (data) => setMentorships(safeArray(data?.mentorships || data)),
+      (data) =>
+        setOpportunities(safeArray(data?.opportunities || data)),
+      (data) => setEvents(safeArray(data?.events || data)),
+      (data) =>
+        setNotifications(safeArray(data?.notifications || data)),
+      (data) => setFeedback(safeArray(data?.feedback || data)),
+    ];
 
-  async function loadUsers() {
+    const failures = [];
 
-    const data = await request("/admin/users");
+    results.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        setters[index](result.value);
+      } else {
+        failures.push(result.reason?.message || "A request failed");
+      }
+    });
 
-    setUsers(Array.isArray(data) ? data : []);
-
-  }
-
-  async function loadMentorships() {
-
-    const data = await request("/admin/mentorships");
-
-    setMentorships(Array.isArray(data) ? data : []);
-
-  }
-
-  async function loadOpportunities() {
-
-    const data = await request("/admin/opportunities");
-
-    setOpportunities(Array.isArray(data) ? data : []);
-
-  }
-
-  async function loadEvents() {
-
-    const data = await request("/admin/events");
-
-    setEvents(Array.isArray(data) ? data : []);
-
-  }
-
-  // Load all student event feedback from the backend.
-
-  async function loadEventFeedback() {
-
-    setFeedbackLoading(true);
-
-    try {
-
-      const data = await request("/admin/event-feedback");
-
-      setEventFeedback(getFeedbackList(data));
-
-    } catch (error) {
-
-      setMessage(error.message || "Unable to load event feedback.");
-
-      throw error;
-
-    } finally {
-
-      setFeedbackLoading(false);
-
+    if (failures.length === results.length) {
+      setError(
+        "Could not load dashboard data. Check your internet connection and backend availability."
+      );
+    } else if (failures.length) {
+      setError(
+        "Some sections could not be loaded. Use Refresh to try again."
+      );
     }
 
+    setLoading(false);
+    setRefreshing(false);
   }
 
-  async function loadEventReports() {
-    setReportLoading(true);
+  useEffect(() => {
+    loadDashboard(true);
+    // Load dashboard information when the component opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function refreshDashboard() {
+    setRefreshing(true);
+    loadDashboard(false);
+  }
+
+  function showSuccess(message) {
+    setSuccess(message);
+    setError("");
+
+    window.setTimeout(() => {
+      setSuccess("");
+    }, 3500);
+  }
+
+  async function changeUserStatus(id, status) {
+    if (!id) {
+      setError("The selected user does not have a valid ID.");
+      return;
+    }
+
     try {
-      const data = await request("/admin/reports/events");
-      setEventReports(Array.isArray(data) ? data : Array.isArray(data?.reports) ? data.reports : []);
-    } catch (error) {
-      setMessage(error.message || "Unable to load event participation reports.");
-      throw error;
+      await request(`/admin/users/${id}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      });
+
+      showSuccess(`User ${status.toLowerCase()} successfully.`);
+      await loadDashboard(false);
+    } catch (err) {
+      setError(err.message || "Could not update user status.");
+    }
+  }
+
+  async function deleteRecord(path, label) {
+    if (!window.confirm(`Are you sure you want to delete this ${label}?`)) {
+      return;
+    }
+
+    try {
+      await request(path, { method: "DELETE" });
+      showSuccess(`${label} deleted successfully.`);
+      await loadDashboard(false);
+    } catch (err) {
+      setError(err.message || `Could not delete ${label}.`);
+    }
+  }
+
+  async function markNotificationRead(notification) {
+    const id = getId(notification);
+
+    if (!id) {
+      setError("This notification does not have a valid ID.");
+      return;
+    }
+
+    try {
+      await request(`/admin/notifications/${id}/read`, {
+        method: "PUT",
+      });
+
+      showSuccess("Notification marked as read.");
+      await loadDashboard(false);
+    } catch (err) {
+      setError(err.message || "Could not update notification.");
+    }
+  }
+
+  function logout() {
+    if (!window.confirm("Are you sure you want to log out?")) return;
+
+    [
+      "user",
+      "loggedInUser",
+      "token",
+      "authToken",
+      "userInfo",
+    ].forEach((key) => localStorage.removeItem(key));
+
+    window.location.href = "/login";
+  }
+
+  function downloadCSV(filename, rows) {
+    if (!rows.length) {
+      setError("There are no records to export.");
+      return;
+    }
+
+    const keys = [
+      ...new Set(rows.flatMap((row) => Object.keys(row || {}))),
+    ];
+
+    const escapeCell = (value) => {
+      if (value === null || value === undefined) return "";
+
+      const text =
+        typeof value === "object" ? JSON.stringify(value) : String(value);
+
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+
+    const csv = [
+      keys.map(escapeCell).join(","),
+      ...rows.map((row) =>
+        keys.map((key) => escapeCell(row[key])).join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+    link.click();
+
+    URL.revokeObjectURL(url);
+  }
+
+  async function loadEventReport() {
+    setReportLoading(true);
+    setError("");
+    setReportData(null);
+
+    try {
+      const [participation, feedbackReport] = await Promise.allSettled([
+        request("/admin/reports/events"),
+        request("/admin/reports/feedback"),
+      ]);
+
+      const report = {
+        participation:
+          participation.status === "fulfilled"
+            ? participation.value
+            : null,
+        feedback:
+          feedbackReport.status === "fulfilled"
+            ? feedbackReport.value
+            : null,
+      };
+
+      setReportData(report);
+
+      if (
+        participation.status === "rejected" &&
+        feedbackReport.status === "rejected"
+      ) {
+        setError(
+          "The report endpoints could not be loaded. Check which report routes your backend supports."
+        );
+      }
     } finally {
       setReportLoading(false);
     }
   }
 
-  function downloadCsv(filename, rows) {
-    if (!rows.length) {
-      setMessage("There is no report data to download yet.");
-      return;
-    }
-    const escapeCsv = (value) => {
-      const text = value === null || value === undefined ? "" : String(value);
-      return `"${text.replace(/"/g, '""')}"`;
-    };
-    const csv = rows.map((row) => row.map(escapeCsv).join(",")).join("\\r\\n");
-    const blob = new Blob(["\\uFEFF", csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  async function loadNotifications() {
-
-    const data = await request("/admin/notifications");
-
-    setNotifications(Array.isArray(data) ? data : []);
-
-  }
-
-  async function loadAll() {
-
-    setLoading(true);
-
-    setMessage("");
-
-    try {
-
-      await Promise.all([
-
-        loadStats(),
-
-        loadUsers(),
-
-        loadMentorships(),
-
-        loadOpportunities(),
-
-        loadEvents(),
-
-        loadNotifications()
-
-      ]);
-
-    } catch (error) {
-
-      setMessage(error.message || "Unable to load dashboard information.");
-
-    } finally {
-
-      setLoading(false);
-
-    }
-
-  }
-
-  useEffect(() => {
-
-    loadAll();
-
-  }, []);
-
-  // Load feedback when the admin opens the Event Feedback section.
-
-  useEffect(() => {
-
-    if (section === "Event Feedback") {
-
-      loadEventFeedback().catch(() => {});
-
-    }
-
-  }, [section]);
-
-  async function perform(action, successText) {
-
-    setMessage("");
-
-    try {
-
-      await action();
-
-      setMessage(successText);
-
-      await loadAll();
-
-    } catch (error) {
-
-      setMessage(error.message);
-
-    }
-
-  }
-
-  async function updateStatus(id, status) {
-
-    await perform(
-
-      () =>
-
-        request(`/admin/users/${id}/status`, {
-
-          method: "PUT",
-
-          body: JSON.stringify({ status })
-
-        }),
-
-      `User ${status.toLowerCase()} successfully.`
-
-    );
-
-  }
-
-  async function deleteItem(path, label) {
-
-    if (!window.confirm(`Are you sure you want to delete ${label}?`)) {
-
-      return;
-
-    }
-
-    await perform(
-
-      () => request(path, { method: "DELETE" }),
-
-      `${label} deleted successfully.`
-
-    );
-
-  }
-
-  function logout() {
-
-    localStorage.removeItem("user");
-
-    window.location.href = "/";
-
-  }
-
-  const filteredUsers = users.filter((user) => {
-
-    const matchesFilter =
-
-      filter === "All" ||
-
-      user.status === filter ||
-
-      user.role === filter;
-
-    const query = search.toLowerCase();
-
-    const matchesSearch =
-
-      !query ||
-
-      user.fullName?.toLowerCase().includes(query) ||
-
-      user.email?.toLowerCase().includes(query);
-
-    return matchesFilter && matchesSearch;
-
-  });
-
-  function badge(value) {
-
-    const status = value || "Approved";
-
-    const palette = {
-
-      Pending: ["#fff3d9", "#9b6500"],
-
-      Approved: ["#e2f7ed", "#13764f"],
-
-      Rejected: ["#ffeaec", "#b52d3b"],
-
-      Student: ["#e8efff", "#365bc1"],
-
-      Alumni: ["#f0e9ff", "#7046bd"],
-
-      Admin: ["#e8edf3", "#536176"],
-
-      Accepted: ["#e2f7ed", "#13764f"]
-
-    };
-
-    const [background, color] = palette[status] || [
-
-      "#edf1f7",
-
-      "#536176"
-
-    ];
-
-    return (
-
-      <span
-
-        style={{
-
-          display: "inline-block",
-
-          background,
-
-          color,
-
-          padding: "5px 10px",
-
-          borderRadius: 20,
-
-          fontSize: 11,
-
-          fontWeight: 800,
-
-          whiteSpace: "nowrap"
-
-        }}
-
-      >
-
-        {status}
-
-      </span>
-
-    );
-
-  }
-
-  function statCard(label, value, icon, color, note) {
-
-    const destinationByLabel = {
-      "Total Users": "Manage Users",
-      Students: "Manage Users",
-      Alumni: "Manage Users",
-      "Pending Approvals": "Validate Users",
-      "Mentorship Requests": "Mentorship Requests",
-      Opportunities: "Opportunities",
-      Events: "Events",
-      Notifications: "Notifications",
-      "Event Feedback": "Event Feedback"
-    };
-    const destination = destinationByLabel[label];
-    const openDestination = () => {
-      if (!destination) return;
-      setSection(destination);
-      setMessage("");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    };
-
-    return (
-
-      <div
-        role={destination ? "button" : undefined}
-        tabIndex={destination ? 0 : undefined}
-        onClick={openDestination}
-        onKeyDown={(event) => {
-          if (destination && (event.key === "Enter" || event.key === " ")) {
-            event.preventDefault();
-            openDestination();
-          }
-        }}
-        title={destination ? `Open ${destination}` : undefined}
-        style={{
-          ...card,
-          position: "relative",
-          overflow: "hidden",
-          minWidth: 0,
-          cursor: destination ? "pointer" : "default",
-          transition: "transform 160ms ease, box-shadow 160ms ease",
-          outline: "none"
-        }}
-      >
-
-        <div
-
-          style={{
-
-            display: "flex",
-
-            alignItems: "center",
-
-            justifyContent: "space-between",
-
-            gap: 10
-
-          }}
-
-        >
-
-          <span
-
-            style={{
-
-              color: colors.muted,
-
-              fontSize: 13,
-
-              fontWeight: 700
-
-            }}
-
-          >
-
-            {label}
-
-          </span>
-
-          <span
-
-            style={{
-
-              width: 43,
-
-              height: 43,
-
-              borderRadius: 14,
-
-              display: "grid",
-
-              placeItems: "center",
-
-              background: `${color}18`,
-
-              color,
-
-              fontSize: 22,
-
-              fontWeight: 800
-
-            }}
-
-          >
-
-            {icon}
-
-          </span>
-
-        </div>
-
-        <div
-
-          style={{
-
-            color: colors.ink,
-
-            fontSize: 31,
-
-            fontWeight: 850,
-
-            marginTop: 15,
-
-            letterSpacing: "-1px"
-
-          }}
-
-        >
-
-          {value ?? 0}
-
-        </div>
-
-        <div
-
-          style={{
-
-            color: colors.muted,
-
-            fontSize: 12,
-
-            marginTop: 5
-
-          }}
-
-        >
-
-          {note}
-
-        </div>
-
-        {destination && (
-          <div style={{ marginTop: 12, color, fontSize: 11, fontWeight: 800 }}>
-            Open {destination} →
-          </div>
-        )}
-
-        <div
-
-          style={{
-
-            position: "absolute",
-
-            bottom: -28,
-
-            right: -22,
-
-            width: 90,
-
-            height: 90,
-
-            borderRadius: "50%",
-
-            background: `${color}09`
-
-          }}
-
-        />
-
-      </div>
-
-    );
-
-  }
-
-  function pageHeading(title, subtitle, action) {
-
-    return (
-
-      <div
-
-        style={{
-
-          display: "flex",
-
-          justifyContent: "space-between",
-
-          alignItems: "center",
-
-          flexWrap: "wrap",
-
-          gap: 14,
-
-          marginBottom: 23
-
-        }}
-
-      >
-
-        <div>
-
-          <h1
-
-            style={{
-
-              color: colors.ink,
-
-              fontSize: 25,
-
-              margin: "0 0 7px",
-
-              fontWeight: 850
-
-            }}
-
-          >
-
-            {title}
-
-          </h1>
-
-          <p
-
-            style={{
-
-              color: colors.muted,
-
-              margin: 0,
-
-              fontSize: 13
-
-            }}
-
-          >
-
-            {subtitle}
-
-          </p>
-
-        </div>
-
-        {action}
-
-      </div>
-
-    );
-
-  }
-
-  function refreshButton(onClick, label = "Refresh") {
-
-    return (
-
-      <button
-
-        style={{
-
-          ...button,
-
-          color: colors.blue,
-
-          background: "#eaf0ff",
-
-          border: "1px solid #dce6ff"
-
-        }}
-
-        onClick={onClick}
-
-      >
-
-        ↻ {label}
-
-      </button>
-
-    );
-
-  }
-
-  const td = {
-
-    padding: "14px 16px",
-
-    borderBottom: `1px solid ${colors.border}`,
-
-    color: "#536078",
-
-    fontSize: 12,
-
-    verticalAlign: "middle"
-
+  const pendingUsers = useMemo(
+    () => users.filter((item) => getStatus(item) === "pending"),
+    [users]
+  );
+
+  const unreadNotifications = useMemo(
+    () =>
+      notifications.filter(
+        (item) =>
+          item?.isRead === false ||
+          item?.read === false ||
+          getStatus(item) === "unread"
+      ),
+    [notifications]
+  );
+
+  const visibleUsers = useMemo(() => {
+    const query = search.toLowerCase().trim();
+
+    return users.filter((item) => {
+      const matchesRole =
+        roleFilter === "All" ||
+        String(item?.role || "").toLowerCase() ===
+          roleFilter.toLowerCase();
+
+      const matchesStatus =
+        statusFilter === "All" ||
+        String(item?.status || "").toLowerCase() ===
+          statusFilter.toLowerCase();
+
+      const matchesSearch =
+        !query ||
+        [
+          item?.name,
+          item?.fullName,
+          item?.email,
+          item?.role,
+          item?.college,
+          item?.status,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query));
+
+      return matchesRole && matchesStatus && matchesSearch;
+    });
+  }, [users, search, roleFilter, statusFilter]);
+
+  const cards = [
+    {
+      label: "Total Users",
+      value: stats?.totalUsers ?? stats?.total_users ?? users.length,
+      icon: "♙",
+      color: COLORS.blue,
+      section: "users",
+    },
+    {
+      label: "Students",
+      value:
+        stats?.students ??
+        users.filter(
+          (item) => String(item?.role).toLowerCase() === "student"
+        ).length,
+      icon: "♧",
+      color: COLORS.purple,
+      section: "users",
+    },
+    {
+      label: "Alumni",
+      value:
+        stats?.alumni ??
+        users.filter(
+          (item) => String(item?.role).toLowerCase() === "alumni"
+        ).length,
+      icon: "♙",
+      color: COLORS.green,
+      section: "users",
+    },
+    {
+      label: "Pending Approvals",
+      value:
+        stats?.pendingApprovals ??
+        stats?.pendingUsers ??
+        pendingUsers.length,
+      icon: "◷",
+      color: COLORS.orange,
+      section: "validate",
+    },
+    {
+      label: "Mentorship Requests",
+      value: stats?.mentorshipRequests ?? mentorships.length,
+      icon: "♧",
+      color: "#168ca5",
+      section: "mentorships",
+    },
+    {
+      label: "Opportunities",
+      value: stats?.opportunities ?? opportunities.length,
+      icon: "▣",
+      color: "#7654d6",
+      section: "opportunities",
+    },
+    {
+      label: "Events",
+      value: stats?.events ?? events.length,
+      icon: "▦",
+      color: "#d16b35",
+      section: "events",
+    },
+    {
+      label: "Notifications",
+      value: stats?.notifications ?? notifications.length,
+      icon: "♧",
+      color: "#d44d70",
+      section: "notifications",
+    },
+    {
+      label: "Event Feedback",
+      value: stats?.eventFeedback ?? stats?.feedback ?? feedback.length,
+      icon: "☆",
+      color: "#a27a15",
+      section: "feedback",
+    },
+  ];
+
+  const pageTitles = {
+    dashboard: "Dashboard",
+    validate: "Validate Users",
+    users: "Manage Users",
+    mentorships: "Mentorship Requests",
+    opportunities: "Opportunities",
+    events: "Events",
+    feedback: "Event Feedback",
+    notifications: "Notifications",
+    reports: "Generate Reports",
   };
 
-  const inputStyle = {
-
-    padding: "11px 13px",
-
-    border: `1px solid ${colors.border}`,
-
-    borderRadius: 10,
-
-    background: "#fff",
-
-    color: colors.ink,
-
-    outline: "none",
-
-    fontSize: 13,
-
-    minWidth: 190
-
-  };
-
-  function userTable(list, showApproval = false) {
-
-    if (!list.length) {
-
-      return (
-
-        <div
-
-          style={{
-
-            ...card,
-
-            textAlign: "center",
-
-            color: colors.muted
-
-          }}
-
-        >
-
-          <div style={{ fontSize: 32, marginBottom: 8 }}>♙</div>
-
-          No users found.
-
-        </div>
-
-      );
-
-    }
-
-    return (
-
-      <div style={{ ...card, padding: 0, overflowX: "auto" }}>
-
-        <table
-
-          style={{
-
-            width: "100%",
-
-            borderCollapse: "collapse",
-
-            minWidth: 760
-
-          }}
-
-        >
-
-          <thead>
-
-            <tr>
-
-              {[
-
-                "User",
-
-                "Email",
-
-                "Role",
-
-                "Status",
-
-                "Registered",
-
-                "Actions"
-
-              ].map((heading) => (
-
-                <th
-
-                  key={heading}
-
-                  style={{
-
-                    padding: "15px 16px",
-
-                    textAlign: "left",
-
-                    background: "#f7f9fd",
-
-                    color: colors.muted,
-
-                    fontSize: 11,
-
-                    textTransform: "uppercase",
-
-                    letterSpacing: ".5px",
-
-                    borderBottom: `1px solid ${colors.border}`
-
-                  }}
-
-                >
-
-                  {heading}
-
-                </th>
-
-              ))}
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {list.map((user) => (
-
-              <tr key={user._id}>
-
-                <td style={td}>
-
-                  <div
-
-                    style={{
-
-                      display: "flex",
-
-                      alignItems: "center",
-
-                      gap: 10
-
-                    }}
-
-                  >
-
-                    <div
-
-                      style={{
-
-                        width: 34,
-
-                        height: 34,
-
-                        borderRadius: 12,
-
-                        display: "grid",
-
-                        placeItems: "center",
-
-                        background: "#eaf0ff",
-
-                        color: colors.blue,
-
-                        fontWeight: 800
-
-                      }}
-
-                    >
-
-                      {(user.fullName || "U")
-
-                        .charAt(0)
-
-                        .toUpperCase()}
-
-                    </div>
-
-                    <strong style={{ color: colors.ink }}>
-
-                      {user.fullName}
-
-                    </strong>
-
-                  </div>
-
-                </td>
-
-                <td style={td}>{user.email}</td>
-
-                <td style={td}>{badge(user.role)}</td>
-
-                <td style={td}>{badge(user.status)}</td>
-
-                <td style={td}>
-
-                  {user.createdAt
-
-                    ? new Date(user.createdAt).toLocaleDateString()
-
-                    : "—"}
-
-                </td>
-
-                <td style={td}>
-
-                  <div
-
-                    style={{
-
-                      display: "flex",
-
-                      flexWrap: "wrap",
-
-                      gap: 6
-
-                    }}
-
-                  >
-
-                    {showApproval && user.status === "Pending" && (
-
-                      <>
-
-                        <button
-
-                          style={{
-
-                            ...button,
-
-                            background: "#e2f7ed",
-
-                            color: "#13764f",
-
-                            padding: "7px 10px"
-
-                          }}
-
-                          onClick={() =>
-
-                            updateStatus(user._id, "Approved")
-
-                          }
-
-                        >
-
-                          Approve
-
-                        </button>
-
-                        <button
-
-                          style={{
-
-                            ...button,
-
-                            background: "#ffeaec",
-
-                            color: "#b52d3b",
-
-                            padding: "7px 10px"
-
-                          }}
-
-                          onClick={() =>
-
-                            updateStatus(user._id, "Rejected")
-
-                          }
-
-                        >
-
-                          Reject
-
-                        </button>
-
-                      </>
-
-                    )}
-
-                    {user.role !== "Admin" && (
-
-                      <button
-
-                        style={{
-
-                          ...button,
-
-                          background: "#fff0f1",
-
-                          color: "#b52d3b",
-
-                          padding: "7px 10px"
-
-                        }}
-
-                        onClick={() =>
-
-                          deleteItem(
-
-                            `/admin/users/${user._id}`,
-
-                            user.fullName || "this user"
-
-                          )
-
-                        }
-
-                      >
-
-                        Delete
-
-                      </button>
-
-                    )}
-
-                  </div>
-
-                </td>
-
-              </tr>
-
-            ))}
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    );
-
+  function openSection(section) {
+    setActiveSection(section);
+    setMobileMenuOpen(false);
+    setSearch("");
+    setError("");
+    setSuccess("");
   }
 
-  function contentCard(title, children, action) {
-
+  function renderDashboard() {
     return (
-
-      <div style={{ ...card, marginBottom: 15 }}>
-
-        <div
-
-          style={{
-
-            display: "flex",
-
-            alignItems: "center",
-
-            justifyContent: "space-between",
-
-            flexWrap: "wrap",
-
-            gap: 12,
-
-            marginBottom: 17
-
-          }}
-
-        >
-
-          <h3
-
-            style={{
-
-              margin: 0,
-
-              color: colors.ink,
-
-              fontSize: 16
-
-            }}
-
-          >
-
-            {title}
-
-          </h3>
-
-          {action}
-
-        </div>
-
-        {children}
-
-      </div>
-
-    );
-
-  }
-
-  function recordCard(title, details, onDelete, buttonText = "Delete") {
-
-    return (
-
-      <div
-
-        key={title + details.join("|")}
-
-        style={{
-
-          ...card,
-
-          padding: 19,
-
-          display: "flex",
-
-          justifyContent: "space-between",
-
-          alignItems: "flex-start",
-
-          gap: 16,
-
-          flexWrap: "wrap"
-
-        }}
-
-      >
-
-        <div style={{ minWidth: 0, flex: 1 }}>
-
-          <h3
-
-            style={{
-
-              margin: "0 0 10px",
-
-              color: colors.ink,
-
-              fontSize: 16
-
-            }}
-
-          >
-
-            {title}
-
-          </h3>
-
-          {details.map((detail, i) => (
-
-            <p
-
-              key={i}
-
-              style={{
-
-                color: colors.muted,
-
-                fontSize: 13,
-
-                margin: "6px 0",
-
-                overflowWrap: "anywhere"
-
-              }}
-
-            >
-
-              {detail}
-
+      <>
+        <section className="rc-hero">
+          <div className="rc-hero-content">
+            <span className="rc-hero-label">ADMINISTRATION PANEL</span>
+            <h2>Welcome back, ReConnect Admin!</h2>
+            <p>
+              Manage users, review registrations, and monitor the
+              ReConnect community from one place.
             </p>
+            <button
+              className="rc-hero-button"
+              onClick={() => openSection("validate")}
+            >
+              Review registrations <span>→</span>
+            </button>
+          </div>
+          <div className="rc-hero-decoration" aria-hidden="true">
+            <div className="rc-orbit rc-orbit-one" />
+            <div className="rc-orbit rc-orbit-two" />
+            <div className="rc-hero-symbol">R</div>
+          </div>
+        </section>
 
+        <div className="rc-section-heading">
+          <div>
+            <h2>Platform Overview</h2>
+            <p>Refresh the latest platform information.</p>
+          </div>
+          <button
+            className="rc-button rc-button-light"
+            onClick={refreshDashboard}
+            disabled={refreshing}
+          >
+            <span className={refreshing ? "rc-spin" : ""}>↻</span>{" "}
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
+
+        <div className="rc-stats-grid">
+          {cards.map((card) => (
+            <button
+              type="button"
+              className="rc-stat-card"
+              key={card.label}
+              onClick={() => openSection(card.section)}
+              style={{ "--card-color": card.color }}
+            >
+              <div className="rc-stat-top">
+                <span className="rc-stat-icon">{card.icon}</span>
+                <span className="rc-stat-arrow">↗</span>
+              </div>
+              <div className="rc-stat-value">{card.value}</div>
+              <div className="rc-stat-label">{card.label}</div>
+              <div className="rc-stat-line" />
+            </button>
           ))}
-
         </div>
 
-        <button
+        <div className="rc-content-grid">
+          <section className="rc-panel">
+            <div className="rc-panel-heading">
+              <div>
+                <h3>Recent Registrations</h3>
+                <p>Review the latest user registrations.</p>
+              </div>
+              <button
+                className="rc-text-button"
+                onClick={() => openSection("validate")}
+              >
+                View all →
+              </button>
+            </div>
 
-          style={{
+            {pendingUsers.length ? (
+              <div className="rc-activity-list">
+                {pendingUsers.slice(0, 5).map((item, index) => (
+                  <div
+                    className="rc-activity-item"
+                    key={getId(item) || index}
+                  >
+                    <div className="rc-avatar">
+                      {getName(item).charAt(0).toUpperCase()}
+                    </div>
+                    <div className="rc-activity-info">
+                      <strong>{getName(item)}</strong>
+                      <span>{item?.email || item?.role || "New user"}</span>
+                    </div>
+                    <StatusBadge status={item?.status} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="All caught up!"
+                description="There are no pending user registrations."
+              />
+            )}
+          </section>
 
-            ...button,
-
-            background: "#fff0f1",
-
-            color: "#b52d3b"
-
-          }}
-
-          onClick={onDelete}
-
-        >
-
-          {buttonText}
-
-        </button>
-
-      </div>
-
+          <section className="rc-panel">
+            <div className="rc-panel-heading">
+              <div>
+                <h3>Quick Actions</h3>
+                <p>Jump directly to an admin task.</p>
+              </div>
+            </div>
+            <div className="rc-quick-actions">
+              {[
+                ["validate", "Approve users", "Review pending accounts", "✓"],
+                ["mentorships", "Mentorship requests", "Monitor requests", "♧"],
+                ["events", "Manage events", "Review platform events", "▦"],
+                ["reports", "View reports", "Export platform records", "▤"],
+              ].map(([section, title, description, icon]) => (
+                <button
+                  className="rc-quick-action"
+                  key={section}
+                  onClick={() => openSection(section)}
+                >
+                  <span className="rc-quick-icon">{icon}</span>
+                  <span className="rc-quick-text">
+                    <strong>{title}</strong>
+                    <small>{description}</small>
+                  </span>
+                  <span className="rc-quick-arrow">→</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      </>
     );
-
   }
 
-  function renderSection() {
-
-    if (section === "Dashboard") {
-
-      return (
-
-        <>
-
-          <div
-
-            style={{
-
-              background: "linear-gradient(115deg,#4169e1,#7654d6)",
-
-              color: "#fff",
-
-              borderRadius: 22,
-
-              padding: "27px 28px",
-
-              marginBottom: 22,
-
-              boxShadow: "0 12px 28px rgba(65,105,225,.18)",
-
-              position: "relative",
-
-              overflow: "hidden"
-
-            }}
-
-          >
-
-            <div style={{ position: "relative", zIndex: 1 }}>
-
-              <div
-
-                style={{
-
-                  fontSize: 12,
-
-                  opacity: 0.85,
-
-                  marginBottom: 9
-
-                }}
-
-              >
-
-                ADMINISTRATION PANEL
-
-              </div>
-
-              <h1
-
-                style={{
-
-                  fontSize: 26,
-
-                  margin: "0 0 9px",
-
-                  fontWeight: 850
-
-                }}
-
-              >
-
-                Welcome back, {adminName}!
-
-              </h1>
-
-              <p
-
-                style={{
-
-                  fontSize: 13,
-
-                  opacity: 0.9,
-
-                  margin: 0,
-
-                  maxWidth: 530,
-
-                  lineHeight: 1.6
-
-                }}
-
-              >
-
-                Manage users, review registrations, and monitor the
-
-                ReConnect community from one place.
-
-              </p>
-
-            </div>
-
-            <div
-
-              style={{
-
-                position: "absolute",
-
-                right: -30,
-
-                top: -65,
-
-                width: 210,
-
-                height: 210,
-
-                border: "35px solid #ffffff16",
-
-                borderRadius: "50%"
-
-              }}
-
-            />
-
+  function renderValidateUsers() {
+    return (
+      <section className="rc-panel">
+        <div className="rc-panel-heading">
+          <div>
+            <h3>Pending User Approvals</h3>
+            <p>Approve or reject new Student and Alumni registrations.</p>
           </div>
-
-          <div
-
-            style={{
-
-              display: "grid",
-
-              gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-
-              gap: 15,
-
-              marginBottom: 22
-
-            }}
-
-          >
-
-            {statCard("Total Users", stats.totalUsers, "♙", colors.blue, "Registered accounts")}
-
-            {statCard("Students", stats.students, "▤", colors.purple, "Student accounts")}
-
-            {statCard("Alumni", stats.alumni, "♧", colors.green, "Alumni accounts")}
-
-            {statCard("Pending Approvals", stats.pendingApprovals, "◷", colors.orange, "Awaiting review")}
-
-            {statCard("Mentorship Requests", stats.mentorshipRequests, "◎", "#0e9bb5", "Requests submitted")}
-
-            {statCard("Opportunities", stats.opportunities, "▣", "#d17a35", "Shared opportunities")}
-
-            {statCard("Events", stats.events, "▦", "#bd5a9b", "Community events")}
-
-            {statCard("Notifications", stats.notifications, "♧", "#64748b", "System notifications")}
-
-            {statCard("Event Feedback", eventFeedback.length, "★", "#e99536", "Feedback submissions loaded")}
-
-          </div>
-
-          <div
-
-            style={{
-
-              ...card,
-
-              display: "flex",
-
-              justifyContent: "space-between",
-
-              alignItems: "center",
-
-              flexWrap: "wrap",
-
-              gap: 15
-
-            }}
-
-          >
-
-            <div>
-
-              <h3 style={{ margin: "0 0 5px", color: colors.ink }}>
-
-                System overview
-
-              </h3>
-
-              <p
-
-                style={{
-
-                  margin: 0,
-
-                  color: colors.muted,
-
-                  fontSize: 13
-
-                }}
-
-              >
-
-                Refresh the latest platform information.
-
-              </p>
-
-            </div>
-
-            {refreshButton(loadAll, "Refresh Dashboard")}
-
-          </div>
-
-        </>
-
-      );
-
-    }
-
-    if (section === "Validate Users") {
-
-      const pending = users.filter(
-
-        (user) => user.status === "Pending"
-
-      );
-
-      return (
-
-        <>
-
-          {pageHeading(
-
-            "Validate Users",
-
-            "Review and approve or reject student and alumni registrations.",
-
-            refreshButton(loadUsers, "Refresh Users")
-
-          )}
-
-          <div
-
-            style={{
-
-              ...card,
-
-              marginBottom: 18,
-
-              background: "#fff9eb",
-
-              borderColor: "#f6e5bd"
-
-            }}
-
-          >
-
-            <strong style={{ color: "#93610a" }}>
-
-              {pending.length} pending registration(s)
-
-            </strong>
-
-            <p
-
-              style={{
-
-                color: "#93610a",
-
-                fontSize: 12,
-
-                margin: "5px 0 0"
-
-              }}
-
-            >
-
-              Review account details before approving access.
-
-            </p>
-
-          </div>
-
-          {userTable(pending, true)}
-
-        </>
-
-      );
-
-    }
-
-    if (section === "Manage Users") {
-
-      return (
-
-        <>
-
-          {pageHeading(
-
-            "Manage Users",
-
-            "Search, filter, review, and manage registered accounts.",
-
-            refreshButton(loadUsers, "Refresh Users")
-
-          )}
-
-          <div
-
-            style={{
-
-              ...card,
-
-              marginBottom: 17,
-
-              display: "flex",
-
-              gap: 10,
-
-              flexWrap: "wrap"
-
-            }}
-
-          >
-
-            <input
-
-              value={search}
-
-              onChange={(e) => setSearch(e.target.value)}
-
-              placeholder="Search by name or email..."
-
-              style={inputStyle}
-
-            />
-
-            <select
-
-              value={filter}
-
-              onChange={(e) => setFilter(e.target.value)}
-
-              style={inputStyle}
-
-            >
-
-              {[
-
-                "All",
-
-                "Student",
-
-                "Alumni",
-
-                "Admin",
-
-                "Pending",
-
-                "Approved",
-
-                "Rejected"
-
-              ].map((item) => (
-
-                <option key={item}>{item}</option>
-
-              ))}
-
-            </select>
-
-          </div>
-
-          {userTable(filteredUsers)}
-
-        </>
-
-      );
-
-    }
-
-    if (section === "Mentorship Requests") {
-
-      return (
-
-        <>
-
-          {pageHeading(
-
-            "Mentorship Requests",
-
-            "Monitor student and alumni mentorship activity.",
-
-            refreshButton(loadMentorships, "Refresh Requests")
-
-          )}
-
-          {mentorships.length ? (
-
-            <div style={{ display: "grid", gap: 13 }}>
-
-              {mentorships.map((item) => (
-
-                <div key={item._id} style={card}>
-
-                  <div
-
-                    style={{
-
-                      display: "flex",
-
-                      justifyContent: "space-between",
-
-                      flexWrap: "wrap",
-
-                      gap: 12
-
-                    }}
-
-                  >
-
-                    <div>
-
-                      <h3
-
-                        style={{
-
-                          color: colors.ink,
-
-                          margin: "0 0 12px",
-
-                          fontSize: 16
-
-                        }}
-
-                      >
-
-                        Mentorship connection
-
-                      </h3>
-
-                      <p style={{ color: colors.muted, fontSize: 13 }}>
-
-                        Student:{" "}
-
-                        <strong>
-
-                          {item.studentId?.fullName || "Unknown"}
-
-                        </strong>
-
-                      </p>
-
-                      <p style={{ color: colors.muted, fontSize: 13 }}>
-
-                        Alumni:{" "}
-
-                        <strong>
-
-                          {item.alumniId?.fullName || "Unknown"}
-
-                        </strong>
-
-                      </p>
-
-                      <p style={{ color: colors.muted, fontSize: 12 }}>
-
-                        Date:{" "}
-
-                        {item.createdAt
-
-                          ? new Date(item.createdAt).toLocaleString()
-
-                          : "—"}
-
-                      </p>
-
-                    </div>
-
-                    {badge(item.status)}
-
+          <span className="rc-count">{pendingUsers.length} pending</span>
+        </div>
+
+        <DataTable
+          rows={pendingUsers}
+          emptyTitle="No pending registrations"
+          emptyDescription="New registrations awaiting approval will appear here."
+          columns={[
+            {
+              key: "name",
+              label: "USER",
+              render: (item) => (
+                <div className="rc-user-cell">
+                  <div className="rc-avatar">
+                    {getName(item).charAt(0).toUpperCase()}
                   </div>
-
-                </div>
-
-              ))}
-
-            </div>
-
-          ) : (
-
-            <div style={card}>No mentorship requests found.</div>
-
-          )}
-
-        </>
-
-      );
-
-    }
-
-    if (section === "Opportunities") {
-
-      return (
-
-        <>
-
-          {pageHeading(
-
-            "Manage Opportunities",
-
-            "View and manage opportunities shared on ReConnect.",
-
-            refreshButton(loadOpportunities, "Refresh")
-
-          )}
-
-          {opportunities.length ? (
-
-            <div style={{ display: "grid", gap: 13 }}>
-
-              {opportunities.map((item) =>
-
-                recordCard(
-
-                  item.title || "Untitled opportunity",
-
-                  [
-
-                    `Company: ${item.company || "—"}`,
-
-                    `Description: ${item.description || "—"}`,
-
-                    `Posted by: ${item.postedBy?.fullName || "Unknown"}`,
-
-                    `Posted: ${
-
-                      item.createdAt
-
-                        ? new Date(item.createdAt).toLocaleString()
-
-                        : "—"
-
-                    }`
-
-                  ],
-
-                  () =>
-
-                    deleteItem(
-
-                      `/admin/opportunities/${item._id}`,
-
-                      "this opportunity"
-
-                    ),
-
-                  "Delete Opportunity"
-
-                )
-
-              )}
-
-            </div>
-
-          ) : (
-
-            <div style={card}>No opportunities found.</div>
-
-          )}
-
-        </>
-
-      );
-
-    }
-
-    if (section === "Events") {
-
-      return (
-
-        <>
-
-          {pageHeading(
-
-            "Manage Events",
-
-            "Review and manage events hosted by the ReConnect community.",
-
-            refreshButton(loadEvents, "Refresh")
-
-          )}
-
-          {events.length ? (
-
-            <div style={{ display: "grid", gap: 13 }}>
-
-              {events.map((item) =>
-
-                recordCard(
-
-                  item.title || "Untitled event",
-
-                  [
-
-                    `Description: ${item.description || "—"}`,
-
-                    `Date: ${item.date || "—"} • Time: ${item.time || "—"}`,
-
-                    `Location: ${item.location || "—"}`,
-
-                    `Organizer: ${item.organizer?.fullName || "Unknown"}`
-
-                  ],
-
-                  () => deleteItem(`/admin/events/${item._id}`, "this event"),
-
-                  "Delete Event"
-
-                )
-
-              )}
-
-            </div>
-
-          ) : (
-
-            <div style={card}>No events found.</div>
-
-          )}
-
-        </>
-
-      );
-
-    }
-
-    if (section === "Event Feedback") {
-
-      const averageRating = eventFeedback.length
-
-        ? eventFeedback.reduce(
-
-            (total, item) => total + getRating(item),
-
-            0
-
-          ) / eventFeedback.length
-
-        : 0;
-
-      const ratedCount = eventFeedback.filter(
-
-        (item) => getRating(item) > 0
-
-      ).length;
-
-      const ratedAverage = ratedCount
-
-        ? eventFeedback.reduce(
-
-            (total, item) =>
-
-              total + (getRating(item) > 0 ? getRating(item) : 0),
-
-            0
-
-          ) / ratedCount
-
-        : 0;
-
-      const filteredFeedback = eventFeedback.filter((item) => {
-
-        const query = search.trim().toLowerCase();
-
-        if (!query) return true;
-
-        const studentName = getStudentName(item).toLowerCase();
-
-        const studentEmail = getStudentEmail(item).toLowerCase();
-
-        const eventTitle = getEventTitle(item).toLowerCase();
-
-        const comments = String(getComments(item)).toLowerCase();
-
-        return (
-
-          studentName.includes(query) ||
-
-          studentEmail.includes(query) ||
-
-          eventTitle.includes(query) ||
-
-          comments.includes(query)
-
-        );
-
-      });
-
-      return (
-
-        <>
-
-          {pageHeading(
-
-            "Event Feedback",
-
-            "View student ratings and comments submitted for ReConnect events.",
-
-            refreshButton(
-
-              () => loadEventFeedback().catch(() => {}),
-
-              "Refresh Feedback"
-
-            )
-
-          )}
-
-          <div
-
-            style={{
-
-              display: "grid",
-
-              gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-
-              gap: 15,
-
-              marginBottom: 22
-
-            }}
-
-          >
-
-            {statCard(
-
-              "Total Feedback",
-
-              eventFeedback.length,
-
-              "★",
-
-              colors.blue,
-
-              "Student submissions"
-
-            )}
-
-            {statCard(
-
-              "Rated Submissions",
-
-              ratedCount,
-
-              "★",
-
-              colors.orange,
-
-              "Submissions with a rating"
-
-            )}
-
-            {statCard(
-
-              "Average Rating",
-
-              ratedCount ? `${ratedAverage.toFixed(2)} / 5` : "—",
-
-              "☆",
-
-              colors.green,
-
-              "Across rated submissions"
-
-            )}
-
-          </div>
-
-          <div
-
-            style={{
-
-              ...card,
-
-              marginBottom: 18,
-
-              display: "flex",
-
-              alignItems: "center",
-
-              justifyContent: "space-between",
-
-              flexWrap: "wrap",
-
-              gap: 12
-
-            }}
-
-          >
-
-            <div>
-
-              <h3
-
-                style={{
-
-                  color: colors.ink,
-
-                  margin: "0 0 5px",
-
-                  fontSize: 16
-
-                }}
-
-              >
-
-                Student Feedback Submissions
-
-              </h3>
-
-              <p
-
-                style={{
-
-                  color: colors.muted,
-
-                  margin: 0,
-
-                  fontSize: 12
-
-                }}
-
-              >
-
-                Feedback is retrieved from the backend and displayed below.
-
-              </p>
-
-            </div>
-
-            <input
-
-              value={search}
-
-              onChange={(e) => setSearch(e.target.value)}
-
-              placeholder="Search student, event, or comment..."
-
-              style={{
-
-                ...inputStyle,
-
-                width: "100%",
-
-                maxWidth: 340
-
-              }}
-
-            />
-
-          </div>
-
-          {feedbackLoading && (
-
-            <div style={{ ...card, marginBottom: 15 }}>
-
-              Loading student feedback...
-
-            </div>
-
-          )}
-
-          {!feedbackLoading && !eventFeedback.length && (
-
-            <div
-
-              style={{
-
-                ...card,
-
-                textAlign: "center",
-
-                padding: "40px 22px"
-
-              }}
-
-            >
-
-              <div
-
-                style={{
-
-                  fontSize: 42,
-
-                  marginBottom: 12,
-
-                  color: colors.orange
-
-                }}
-
-              >
-
-                ★
-
-              </div>
-
-              <h3
-
-                style={{
-
-                  color: colors.ink,
-
-                  margin: "0 0 9px",
-
-                  fontSize: 18
-
-                }}
-
-              >
-
-                No Feedback Found
-
-              </h3>
-
-              <p
-
-                style={{
-
-                  color: colors.muted,
-
-                  fontSize: 13,
-
-                  lineHeight: 1.7,
-
-                  maxWidth: 490,
-
-                  margin: "0 auto 18px"
-
-                }}
-
-              >
-
-                No feedback submissions were returned by the server.
-
-                Once students submit feedback and it is saved in MongoDB,
-
-                it should appear here.
-
-              </p>
-
-              {refreshButton(
-
-                () => loadEventFeedback().catch(() => {}),
-
-                "Try Again"
-
-              )}
-
-            </div>
-
-          )}
-
-          {!feedbackLoading && eventFeedback.length > 0 && (
-
-            <>
-
-              <div
-
-                style={{
-
-                  color: colors.muted,
-
-                  fontSize: 12,
-
-                  marginBottom: 12
-
-                }}
-
-              >
-
-                Showing {filteredFeedback.length} of {eventFeedback.length}{" "}
-
-                feedback submission(s)
-
-              </div>
-
-              {filteredFeedback.length ? (
-
-                <div style={{ display: "grid", gap: 14 }}>
-
-                  {filteredFeedback.map((item, index) => {
-
-                    const student = getStudent(item);
-
-                    const event = getFeedbackEvent(item);
-
-                    const rating = getRating(item);
-
-                    const comments = getComments(item);
-
-                    const studentName = getStudentName(item);
-
-                    const eventTitle = getEventTitle(item);
-
-                    const feedbackId =
-
-                      item._id ||
-
-                      `${student._id || studentName}-${event._id || eventTitle}-${index}`;
-
-                    return (
-
-                      <div key={feedbackId} style={card}>
-
-                        <div
-
-                          style={{
-
-                            display: "flex",
-
-                            justifyContent: "space-between",
-
-                            alignItems: "flex-start",
-
-                            flexWrap: "wrap",
-
-                            gap: 14
-
-                          }}
-
-                        >
-
-                          <div
-
-                            style={{
-
-                              display: "flex",
-
-                              alignItems: "center",
-
-                              gap: 12,
-
-                              minWidth: 0
-
-                            }}
-
-                          >
-
-                            <div
-
-                              style={{
-
-                                width: 46,
-
-                                height: 46,
-
-                                flexShrink: 0,
-
-                                borderRadius: 15,
-
-                                background: "#eaf0ff",
-
-                                color: colors.blue,
-
-                                display: "grid",
-
-                                placeItems: "center",
-
-                                fontSize: 19,
-
-                                fontWeight: 850
-
-                              }}
-
-                            >
-
-                              {studentName.charAt(0).toUpperCase()}
-
-                            </div>
-
-                            <div style={{ minWidth: 0 }}>
-
-                              <h3
-
-                                style={{
-
-                                  margin: "0 0 5px",
-
-                                  color: colors.ink,
-
-                                  fontSize: 16,
-
-                                  overflowWrap: "anywhere"
-
-                                }}
-
-                              >
-
-                                {studentName}
-
-                              </h3>
-
-                              <p
-
-                                style={{
-
-                                  margin: 0,
-
-                                  color: colors.muted,
-
-                                  fontSize: 12,
-
-                                  overflowWrap: "anywhere"
-
-                                }}
-
-                              >
-
-                                {getStudentEmail(item)}
-
-                              </p>
-
-                              {student.role && (
-
-                                <div style={{ marginTop: 7 }}>
-
-                                  {badge(student.role)}
-
-                                </div>
-
-                              )}
-
-                            </div>
-
-                          </div>
-
-                          <div
-
-                            style={{
-
-                              padding: "9px 13px",
-
-                              borderRadius: 12,
-
-                              background: "#fff4d9",
-
-                              border: "1px solid #f5e2b9",
-
-                              color: "#8b641a",
-
-                              fontWeight: 850,
-
-                              fontSize: 14,
-
-                              whiteSpace: "nowrap"
-
-                            }}
-
-                          >
-
-                            {rating > 0
-
-                              ? `${rating} / 5 ★`
-
-                              : "No rating"}
-
-                          </div>
-
-                        </div>
-
-                        <div
-
-                          style={{
-
-                            marginTop: 17,
-
-                            padding: 15,
-
-                            background: "#f7f9fd",
-
-                            border: `1px solid ${colors.border}`,
-
-                            borderRadius: 13
-
-                          }}
-
-                        >
-
-                          <div
-
-                            style={{
-
-                              color: colors.muted,
-
-                              fontSize: 10,
-
-                              fontWeight: 800,
-
-                              textTransform: "uppercase",
-
-                              letterSpacing: ".7px",
-
-                              marginBottom: 6
-
-                            }}
-
-                          >
-
-                            Event
-
-                          </div>
-
-                          <h4
-
-                            style={{
-
-                              color: colors.ink,
-
-                              margin: "0 0 6px",
-
-                              fontSize: 15
-
-                            }}
-
-                          >
-
-                            {eventTitle}
-
-                          </h4>
-
-                          {(event.date || item.eventDate) && (
-
-                            <p
-
-                              style={{
-
-                                color: colors.muted,
-
-                                margin: 0,
-
-                                fontSize: 12
-
-                              }}
-
-                            >
-
-                              Date: {event.date || item.eventDate}
-
-                            </p>
-
-                          )}
-
-                          {(event.location || item.eventLocation) && (
-
-                            <p
-
-                              style={{
-
-                                color: colors.muted,
-
-                                margin: "5px 0 0",
-
-                                fontSize: 12
-
-                              }}
-
-                            >
-
-                              Location: {event.location || item.eventLocation}
-
-                            </p>
-
-                          )}
-
-                        </div>
-
-                        <div style={{ marginTop: 17 }}>
-
-                          <h4
-
-                            style={{
-
-                              color: colors.ink,
-
-                              margin: "0 0 8px",
-
-                              fontSize: 13
-
-                            }}
-
-                          >
-
-                            Student's Comments
-
-                          </h4>
-
-                          <p
-
-                            style={{
-
-                              color: comments ? "#536078" : colors.muted,
-
-                              fontSize: 13,
-
-                              lineHeight: 1.8,
-
-                              whiteSpace: "pre-wrap",
-
-                              overflowWrap: "anywhere",
-
-                              margin: 0
-
-                            }}
-
-                          >
-
-                            {typeof comments === "string" && comments.trim()
-
-                              ? comments
-
-                              : "No written comment provided."}
-
-                          </p>
-
-                        </div>
-
-                        <div
-
-                          style={{
-
-                            marginTop: 17,
-
-                            paddingTop: 12,
-
-                            borderTop: `1px solid ${colors.border}`,
-
-                            display: "flex",
-
-                            justifyContent: "space-between",
-
-                            flexWrap: "wrap",
-
-                            gap: 8
-
-                          }}
-
-                        >
-
-                          <small
-
-                            style={{
-
-                              color: colors.muted,
-
-                              fontSize: 11
-
-                            }}
-
-                          >
-
-                            Submitted:{" "}
-
-                            {item.createdAt || item.submittedAt
-
-                              ? new Date(
-
-                                  item.createdAt || item.submittedAt
-
-                                ).toLocaleString()
-
-                              : "Date unavailable"}
-
-                          </small>
-
-                          <small
-
-                            style={{
-
-                              color: colors.muted,
-
-                              fontSize: 11
-
-                            }}
-
-                          >
-
-                            Feedback ID:{" "}
-
-                            {item._id ? String(item._id).slice(-8) : "—"}
-
-                          </small>
-
-                        </div>
-
-                      </div>
-
-                    );
-
-                  })}
-
-                </div>
-
-              ) : (
-
-                <div
-
-                  style={{
-
-                    ...card,
-
-                    textAlign: "center",
-
-                    color: colors.muted
-
-                  }}
-
-                >
-
-                  No feedback matches your search.
-
-                </div>
-
-              )}
-
-            </>
-
-          )}
-
-        </>
-
-      );
-
-    }
-
-    if (section === "Notifications") {
-
-      return (
-
-        <>
-
-          {pageHeading(
-
-            "Notifications",
-
-            "Monitor notifications generated across the platform.",
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-
-              {refreshButton(loadNotifications)}
-
-              {notifications.length > 0 && (
-
-                <button
-
-                  style={{
-
-                    ...button,
-
-                    background: "#fff0f1",
-
-                    color: "#b52d3b"
-
-                  }}
-
-                  onClick={() =>
-
-                    deleteItem("/admin/notifications", "all notifications")
-
-                  }
-
-                >
-
-                  Delete All
-
-                </button>
-
-              )}
-
-            </div>
-
-          )}
-
-          {notifications.length ? (
-
-            <div style={{ display: "grid", gap: 12 }}>
-
-              {notifications.map((item) => (
-
-                <div
-
-                  key={item._id}
-
-                  style={{
-
-                    ...card,
-
-                    display: "flex",
-
-                    justifyContent: "space-between",
-
-                    gap: 14,
-
-                    flexWrap: "wrap"
-
-                  }}
-
-                >
-
-                  <div style={{ flex: 1, minWidth: 180 }}>
-
-                    <h3
-
-                      style={{
-
-                        color: colors.ink,
-
-                        fontSize: 15,
-
-                        margin: "0 0 7px"
-
-                      }}
-
-                    >
-
-                      {item.title || "ReConnect Notification"}
-
-                    </h3>
-
-                    <p
-
-                      style={{
-
-                        color: colors.muted,
-
-                        fontSize: 13,
-
-                        margin: "0 0 10px"
-
-                      }}
-
-                    >
-
-                      {item.message}
-
-                    </p>
-
-                    <small style={{ color: colors.muted }}>
-
-                      User: {item.user?.fullName || "Unknown"} •{" "}
-
-                      {item.createdAt
-
-                        ? new Date(item.createdAt).toLocaleString()
-
-                        : ""}
-
-                    </small>
-
+                  <div>
+                    <strong>{getName(item)}</strong>
+                    <span>{item?.email || "—"}</span>
                   </div>
-
+                </div>
+              ),
+            },
+            {
+              key: "role",
+              label: "ROLE",
+              render: (item) => item?.role || "—",
+            },
+            {
+              key: "createdAt",
+              label: "REGISTERED",
+              render: (item) => formatDate(item?.createdAt || item?.date),
+            },
+            {
+              key: "status",
+              label: "STATUS",
+              render: (item) => <StatusBadge status={item?.status} />,
+            },
+            {
+              key: "actions",
+              label: "ACTIONS",
+              render: (item) => (
+                <div className="rc-action-group">
                   <button
-
-                    style={{
-
-                      ...button,
-
-                      background: "#fff0f1",
-
-                      color: "#b52d3b",
-
-                      alignSelf: "flex-start"
-
-                    }}
-
-                    onClick={() =>
-
-                      deleteItem(
-
-                        `/admin/notifications/${item._id}`,
-
-                        "this notification"
-
-                      )
-
-                    }
-
+                    className="rc-button rc-button-success"
+                    onClick={() => changeUserStatus(getId(item), "Approved")}
                   >
-
-                    Delete
-
+                    Approve
                   </button>
-
+                  <button
+                    className="rc-button rc-button-danger"
+                    onClick={() => changeUserStatus(getId(item), "Rejected")}
+                  >
+                    Reject
+                  </button>
                 </div>
+              ),
+            },
+          ]}
+        />
+      </section>
+    );
+  }
 
-              ))}
+  function renderUsers() {
+    return (
+      <section className="rc-panel">
+        <div className="rc-panel-heading">
+          <div>
+            <h3>All Users</h3>
+            <p>Search, filter, and manage registered accounts.</p>
+          </div>
+          <button
+            className="rc-button rc-button-light"
+            onClick={() => downloadCSV("reconnect-users.csv", visibleUsers)}
+          >
+            ↓ Export CSV
+          </button>
+        </div>
 
-            </div>
+        <div className="rc-filters">
+          <input
+            className="rc-input"
+            placeholder="Search by name, email, college..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <select
+            className="rc-input"
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value)}
+          >
+            <option>All</option>
+            <option>Student</option>
+            <option>Alumni</option>
+            <option>Admin</option>
+          </select>
+          <select
+            className="rc-input"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option>All</option>
+            <option>Pending</option>
+            <option>Approved</option>
+            <option>Rejected</option>
+          </select>
+        </div>
 
-          ) : (
-
-            <div style={card}>No notifications found.</div>
-
-          )}
-
-        </>
-
-      );
-
-    }
-
-    if (section === "Generate Reports") {
-      const rows = [
-        ["Total Users", stats.totalUsers],
-        ["Students", stats.students],
-        ["Alumni", stats.alumni],
-        ["Pending Approvals", stats.pendingApprovals],
-        ["Mentorship Requests", stats.mentorshipRequests],
-        ["Opportunities", stats.opportunities],
-        ["Events", stats.events],
-        ["Notifications", stats.notifications],
-        ["Event Feedback Responses", eventFeedback.length]
-      ];
-
-      const eventReportRows = eventReports.map((report) => {
-        const event = report.event || report;
-        return {
-          id: event._id || event.id || event.title,
-          title: event.title || "Untitled event",
-          date: event.startDate || event.eventDate || event.date || "—",
-          organizer: event.organizer?.fullName || event.organizer?.name || "Unknown",
-          registered: Number(report.registrationCount ?? report.registeredCount ?? 0),
-          cancelled: Number(report.cancelledCount ?? 0),
-          feedbackCount: Number(report.feedbackCount ?? 0),
-          averageRating: report.averageRating ?? "—",
-          participants: Array.isArray(report.participants) ? report.participants : []
-        };
-      });
-
-      const feedbackCsvRows = [
-        ["Event", "Event Date", "Student Name", "Student Email", "Rating", "Comments", "Submitted At"],
-        ...eventFeedback.map((item) => {
-          const event = getFeedbackEvent(item);
-          return [
-            getEventTitle(item),
-            event.startDate || event.eventDate || event.date || item.eventDate || "",
-            getStudentName(item),
-            getStudentEmail(item),
-            getRating(item) || "",
-            typeof getComments(item) === "string" ? getComments(item) : JSON.stringify(getComments(item) || ""),
-            item.createdAt || item.submittedAt
-              ? new Date(item.createdAt || item.submittedAt).toLocaleString()
-              : ""
-          ];
-        })
-      ];
-
-      const eventCsvRows = [
-        ["Event", "Date", "Organizer", "Registered Members", "Participant Names", "Participant Emails", "Cancelled Registrations", "Feedback Responses", "Average Rating"],
-        ...eventReportRows.map((item) => [
-          item.title, item.date, item.organizer, item.registered,
-          item.participants.map((person) => person.fullName).join("; "),
-          item.participants.map((person) => person.email).join("; "),
-          item.cancelled, item.feedbackCount, item.averageRating
-        ])
-      ];
-
-      return (
-        <>
-          {pageHeading(
-            "Generate Reports",
-            "Generate event participation and student feedback reports, or print the system summary.",
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              <button
-                style={{ ...button, background: colors.blue, color: "#fff" }}
-                onClick={() => window.print()}
-              >
-                Print / Save as PDF
-              </button>
-              <button
-                style={{ ...button, background: "#e2f7ed", color: "#13764f" }}
-                onClick={() => downloadCsv("reconnect-event-participation-report.csv", eventCsvRows)}
-              >
-                Download Event Report CSV
-              </button>
-              <button
-                style={{ ...button, background: "#fff3d9", color: "#8b641a" }}
-                onClick={() => downloadCsv("reconnect-event-feedback-report.csv", feedbackCsvRows)}
-              >
-                Download Feedback CSV
-              </button>
-            </div>
-          )}
-
-          <div id="reconnect-report" style={{ ...card, maxWidth: 1000, margin: "0 auto 22px" }}>
-            <div style={{ textAlign: "center", padding: "12px 0 22px", borderBottom: `1px solid ${colors.border}` }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>✦</div>
-              <h2 style={{ color: colors.ink, margin: 0 }}>ReConnect System Report</h2>
-              <p style={{ color: colors.muted, fontSize: 12 }}>
-                Generated on {new Date().toLocaleString()}
-              </p>
-            </div>
-
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-              gap: 12,
-              marginTop: 20
-            }}>
-              {rows.map(([label, value]) => (
-                <div key={label} style={{
-                  padding: 16, borderRadius: 13, background: "#f6f8fd",
-                  border: `1px solid ${colors.border}`
-                }}>
-                  <div style={{ color: colors.muted, fontSize: 12 }}>{label}</div>
-                  <div style={{ color: colors.ink, fontWeight: 850, fontSize: 25, marginTop: 8 }}>
-                    {value ?? 0}
+        <DataTable
+          rows={visibleUsers}
+          emptyTitle="No matching users"
+          emptyDescription="Try changing your search or filter."
+          columns={[
+            {
+              key: "name",
+              label: "USER",
+              render: (item) => (
+                <div className="rc-user-cell">
+                  <div className="rc-avatar">
+                    {getName(item).charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <strong>{getName(item)}</strong>
+                    <span>{item?.email || "—"}</span>
                   </div>
                 </div>
-              ))}
-            </div>
+              ),
+            },
+            {
+              key: "role",
+              label: "ROLE",
+              render: (item) => item?.role || "—",
+            },
+            {
+              key: "status",
+              label: "STATUS",
+              render: (item) => <StatusBadge status={item?.status} />,
+            },
+            {
+              key: "createdAt",
+              label: "JOINED",
+              render: (item) => formatDate(item?.createdAt),
+            },
+            {
+              key: "actions",
+              label: "ACTIONS",
+              render: (item) => (
+                <div className="rc-action-group">
+                  {getStatus(item) !== "approved" && (
+                    <button
+                      className="rc-icon-button"
+                      title="Approve user"
+                      onClick={() =>
+                        changeUserStatus(getId(item), "Approved")
+                      }
+                    >
+                      ✓
+                    </button>
+                  )}
+                  {getStatus(item) !== "rejected" && (
+                    <button
+                      className="rc-icon-button rc-icon-danger"
+                      title="Reject user"
+                      onClick={() =>
+                        changeUserStatus(getId(item), "Rejected")
+                      }
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <button
+                    className="rc-icon-button rc-icon-danger"
+                    title="Delete user"
+                    onClick={() =>
+                      deleteRecord(`/admin/users/${getId(item)}`, "user")
+                    }
+                  >
+                    🗑
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+        />
+      </section>
+    );
+  }
+
+  function renderMentorships() {
+    return (
+      <section className="rc-panel">
+        <div className="rc-panel-heading">
+          <div>
+            <h3>Mentorship Requests</h3>
+            <p>Monitor student requests and their current status.</p>
           </div>
+          <button
+            className="rc-button rc-button-light"
+            onClick={() =>
+              downloadCSV("reconnect-mentorships.csv", mentorships)
+            }
+          >
+            ↓ Export CSV
+          </button>
+        </div>
 
-          <div style={{ ...card, marginBottom: 20 }}>
-            <div style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              flexWrap: "wrap", gap: 12, marginBottom: 16
-            }}>
-              <div>
-                <h3 style={{ color: colors.ink, margin: "0 0 5px", fontSize: 17 }}>
-                  Event Participation Report
-                </h3>
-                <p style={{ color: colors.muted, margin: 0, fontSize: 12 }}>
-                  Registration totals, cancellations, feedback response counts, and average ratings for each event.
-                </p>
-              </div>
-              {refreshButton(() => {
-                loadEventReports().catch(() => {});
-                loadEventFeedback().catch(() => {});
-              }, "Refresh Reports")}
-            </div>
+        <DataTable
+          rows={mentorships}
+          columns={[
+            {
+              key: "student",
+              label: "STUDENT",
+              render: (item) =>
+                getName(item?.student) ||
+                item?.studentName ||
+                item?.studentEmail ||
+                "—",
+            },
+            {
+              key: "alumni",
+              label: "ALUMNI",
+              render: (item) =>
+                getName(item?.alumni) ||
+                item?.alumniName ||
+                item?.alumniEmail ||
+                "—",
+            },
+            {
+              key: "message",
+              label: "MESSAGE",
+              render: (item) => item?.message || item?.topic || "—",
+            },
+            {
+              key: "createdAt",
+              label: "REQUESTED",
+              render: (item) => formatDate(item?.createdAt),
+            },
+            {
+              key: "status",
+              label: "STATUS",
+              render: (item) => <StatusBadge status={item?.status} />,
+            },
+          ]}
+        />
+      </section>
+    );
+  }
 
-            {reportLoading && <p style={{ color: colors.blue, fontSize: 13 }}>Loading event reports...</p>}
-
-            {!reportLoading && eventReportRows.length === 0 && (
-              <p style={{ color: colors.muted, fontSize: 13 }}>No event report data was returned by the server.</p>
-            )}
-
-            {eventReportRows.length > 0 && (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 780 }}>
-                  <thead>
-                    <tr>
-                      {["Event", "Date", "Organizer", "Registered", "Participants", "Cancelled", "Feedback", "Avg. Rating"].map((heading) => (
-                        <th key={heading} style={{
-                          padding: "12px 10px", textAlign: "left", background: "#f7f9fd",
-                          color: colors.muted, fontSize: 11, textTransform: "uppercase",
-                          borderBottom: `1px solid ${colors.border}`
-                        }}>{heading}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {eventReportRows.map((item) => (
-                      <tr key={item.id}>
-                        <td style={td}><strong style={{ color: colors.ink }}>{item.title}</strong></td>
-                        <td style={td}>{item.date}</td>
-                        <td style={td}>{item.organizer}</td>
-                        <td style={td}>{item.registered}</td>
-                        <td style={{ ...td, minWidth: 200, whiteSpace: "pre-wrap" }}>
-                          {item.participants.length
-                            ? item.participants.map((person) => `${person.fullName}${person.email ? ` (${person.email})` : ""}`).join("\n")
-                            : "No active registrations"}
-                        </td>
-                        <td style={td}>{item.cancelled}</td>
-                        <td style={td}>{item.feedbackCount}</td>
-                        <td style={td}>{item.averageRating === "—" ? "—" : `${item.averageRating} / 5`}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+  function renderOpportunities() {
+    return (
+      <section className="rc-panel">
+        <div className="rc-panel-heading">
+          <div>
+            <h3>Manage Opportunities</h3>
+            <p>View opportunities shared with the ReConnect community.</p>
           </div>
+          <button
+            className="rc-button rc-button-light"
+            onClick={() =>
+              downloadCSV("reconnect-opportunities.csv", opportunities)
+            }
+          >
+            ↓ Export CSV
+          </button>
+        </div>
 
-          <div style={{ ...card, marginBottom: 20 }}>
-            <h3 style={{ color: colors.ink, margin: "0 0 6px", fontSize: 17 }}>
-              Student Feedback Details
-            </h3>
-            <p style={{ color: colors.muted, fontSize: 12, margin: "0 0 15px" }}>
-              Each feedback submission is included in the downloadable feedback CSV.
+        <DataTable
+          rows={opportunities}
+          columns={[
+            {
+              key: "title",
+              label: "OPPORTUNITY",
+              render: (item) => (
+                <div>
+                  <strong>{item?.title || "Untitled opportunity"}</strong>
+                  <div className="rc-secondary">
+                    {item?.company || item?.organization || "—"}
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "type",
+              label: "TYPE",
+              render: (item) => item?.type || item?.category || "—",
+            },
+            {
+              key: "postedBy",
+              label: "POSTED BY",
+              render: (item) =>
+                getName(item?.postedBy || item?.alumni) ||
+                item?.postedByName ||
+                "—",
+            },
+            {
+              key: "createdAt",
+              label: "POSTED",
+              render: (item) => formatDate(item?.createdAt),
+            },
+            {
+              key: "actions",
+              label: "ACTIONS",
+              render: (item) => (
+                <button
+                  className="rc-icon-button rc-icon-danger"
+                  title="Delete opportunity"
+                  onClick={() =>
+                    deleteRecord(
+                      `/admin/opportunities/${getId(item)}`,
+                      "opportunity"
+                    )
+                  }
+                >
+                  🗑
+                </button>
+              ),
+            },
+          ]}
+        />
+      </section>
+    );
+  }
+
+  function renderEvents() {
+    return (
+      <section className="rc-panel">
+        <div className="rc-panel-heading">
+          <div>
+            <h3>Manage Events</h3>
+            <p>Review event details and remove events when necessary.</p>
+          </div>
+          <button
+            className="rc-button rc-button-light"
+            onClick={() => downloadCSV("reconnect-events.csv", events)}
+          >
+            ↓ Export CSV
+          </button>
+        </div>
+
+        <DataTable
+          rows={events}
+          columns={[
+            {
+              key: "title",
+              label: "EVENT",
+              render: (item) => (
+                <div>
+                  <strong>{item?.title || item?.name || "Untitled event"}</strong>
+                  <div className="rc-secondary">
+                    {item?.location || "Location not specified"}
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "startDate",
+              label: "DATE",
+              render: (item) =>
+                formatDate(item?.startDate || item?.eventDate || item?.date),
+            },
+            {
+              key: "startTime",
+              label: "TIME",
+              render: (item) => item?.startTime || item?.time || "—",
+            },
+            {
+              key: "status",
+              label: "STATUS",
+              render: (item) => (
+                <StatusBadge status={item?.status || "Published"} />
+              ),
+            },
+            {
+              key: "actions",
+              label: "ACTIONS",
+              render: (item) => (
+                <button
+                  className="rc-icon-button rc-icon-danger"
+                  title="Delete event"
+                  onClick={() =>
+                    deleteRecord(`/admin/events/${getId(item)}`, "event")
+                  }
+                >
+                  🗑
+                </button>
+              ),
+            },
+          ]}
+        />
+      </section>
+    );
+  }
+
+  function renderFeedback() {
+    return (
+      <section className="rc-panel">
+        <div className="rc-panel-heading">
+          <div>
+            <h3>Event Feedback</h3>
+            <p>Review ratings and comments submitted by students.</p>
+          </div>
+          <button
+            className="rc-button rc-button-light"
+            onClick={() => downloadCSV("reconnect-event-feedback.csv", feedback)}
+          >
+            ↓ Export CSV
+          </button>
+        </div>
+
+        <DataTable
+          rows={feedback}
+          emptyTitle="No feedback available"
+          emptyDescription="Student event feedback will appear here when available."
+          columns={[
+            {
+              key: "event",
+              label: "EVENT",
+              render: (item) =>
+                getName(item?.event) ||
+                item?.eventTitle ||
+                item?.title ||
+                "—",
+            },
+            {
+              key: "student",
+              label: "STUDENT",
+              render: (item) =>
+                getName(item?.student) ||
+                item?.studentName ||
+                item?.studentEmail ||
+                "—",
+            },
+            {
+              key: "rating",
+              label: "RATING",
+              render: (item) => {
+                const rating = Number(item?.rating || item?.stars || 0);
+                return rating ? `${rating} / 5 ★` : "—";
+              },
+            },
+            {
+              key: "comment",
+              label: "COMMENT",
+              render: (item) => (
+                <span className="rc-comment">
+                  {item?.comment || item?.feedback || item?.message || "—"}
+                </span>
+              ),
+            },
+            {
+              key: "createdAt",
+              label: "SUBMITTED",
+              render: (item) => formatDate(item?.createdAt),
+            },
+          ]}
+        />
+      </section>
+    );
+  }
+
+  function renderNotifications() {
+    return (
+      <section className="rc-panel">
+        <div className="rc-panel-heading">
+          <div>
+            <h3>Notifications</h3>
+            <p>Review system activity and notification messages.</p>
+          </div>
+          <span className="rc-count">
+            {unreadNotifications.length} unread
+          </span>
+        </div>
+
+        {notifications.length ? (
+          <div className="rc-notification-list">
+            {notifications.map((item, index) => {
+              const isUnread =
+                item?.isRead === false ||
+                item?.read === false ||
+                getStatus(item) === "unread";
+
+              return (
+                <div
+                  className={`rc-notification ${isUnread ? "rc-notification-unread" : ""}`}
+                  key={getId(item) || index}
+                >
+                  <div className="rc-notification-icon">
+                    {isUnread ? "●" : "✓"}
+                  </div>
+                  <div className="rc-notification-body">
+                    <strong>
+                      {item?.title || item?.type || "Notification"}
+                    </strong>
+                    <p>
+                      {item?.message ||
+                        item?.content ||
+                        item?.description ||
+                        "No message provided."}
+                    </p>
+                    <span>
+                      {formatDateTime(item?.createdAt || item?.date)}
+                    </span>
+                  </div>
+                  <div className="rc-notification-actions">
+                    <StatusBadge status={isUnread ? "Unread" : "Read"} />
+                    {isUnread && (
+                      <button
+                        className="rc-text-button"
+                        onClick={() => markNotificationRead(item)}
+                      >
+                        Mark read
+                      </button>
+                    )}
+                    <button
+                      className="rc-icon-button rc-icon-danger"
+                      title="Delete notification"
+                      onClick={() =>
+                        deleteRecord(
+                          `/admin/notifications/${getId(item)}`,
+                          "notification"
+                        )
+                      }
+                    >
+                      🗑
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState
+            title="No notifications"
+            description="System notifications will appear here."
+          />
+        )}
+      </section>
+    );
+  }
+
+  function renderReports() {
+    return (
+      <>
+        <div className="rc-report-intro">
+          <div className="rc-report-symbol">▤</div>
+          <div>
+            <h3>ReConnect Reports</h3>
+            <p>
+              Review platform records and export data for your project
+              documentation.
             </p>
-            {feedbackLoading && <p style={{ color: colors.blue, fontSize: 13 }}>Loading feedback responses...</p>}
-            {!feedbackLoading && eventFeedback.length === 0 && (
-              <p style={{ color: colors.muted, fontSize: 13 }}>No feedback submissions are available yet.</p>
-            )}
-            {eventFeedback.length > 0 && (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
-                  <thead>
-                    <tr>
-                      {["Event", "Student", "Email", "Rating", "Feedback", "Submitted"].map((heading) => (
-                        <th key={heading} style={{
-                          padding: "12px 10px", textAlign: "left", background: "#f7f9fd",
-                          color: colors.muted, fontSize: 11, textTransform: "uppercase",
-                          borderBottom: `1px solid ${colors.border}`
-                        }}>{heading}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {eventFeedback.map((item, index) => (
-                      <tr key={item._id || index}>
-                        <td style={td}>{getEventTitle(item)}</td>
-                        <td style={td}>{getStudentName(item)}</td>
-                        <td style={td}>{getStudentEmail(item)}</td>
-                        <td style={td}>{getRating(item) ? `${getRating(item)} / 5` : "—"}</td>
-                        <td style={{ ...td, minWidth: 180, whiteSpace: "pre-wrap" }}>
-                          {String(getComments(item) || "No written comment")}
-                        </td>
-                        <td style={td}>
-                          {item.createdAt || item.submittedAt
-                            ? new Date(item.createdAt || item.submittedAt).toLocaleString()
-                            : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          </div>
+        </div>
+
+        <div className="rc-report-grid">
+          {[
+            {
+              title: "User Report",
+              description: "Export registered users, roles, and statuses.",
+              icon: "♙",
+              action: () => downloadCSV("reconnect-users.csv", users),
+            },
+            {
+              title: "Mentorship Report",
+              description: "Export student and alumni mentorship requests.",
+              icon: "♧",
+              action: () =>
+                downloadCSV("reconnect-mentorships.csv", mentorships),
+            },
+            {
+              title: "Opportunity Report",
+              description: "Export available opportunity records.",
+              icon: "▣",
+              action: () =>
+                downloadCSV("reconnect-opportunities.csv", opportunities),
+            },
+            {
+              title: "Event Report",
+              description: "Export events currently recorded on the platform.",
+              icon: "▦",
+              action: () => downloadCSV("reconnect-events.csv", events),
+            },
+            {
+              title: "Feedback Report",
+              description: "Export ratings and student comments.",
+              icon: "☆",
+              action: () =>
+                downloadCSV("reconnect-event-feedback.csv", feedback),
+            },
+            {
+              title: "Notification Report",
+              description: "Export stored platform notifications.",
+              icon: "♧",
+              action: () =>
+                downloadCSV("reconnect-notifications.csv", notifications),
+            },
+          ].map((report) => (
+            <div className="rc-report-card" key={report.title}>
+              <div className="rc-report-card-icon">{report.icon}</div>
+              <h4>{report.title}</h4>
+              <p>{report.description}</p>
+              <button className="rc-button rc-button-light" onClick={report.action}>
+                Download CSV ↓
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <section className="rc-panel rc-event-report">
+          <div className="rc-panel-heading">
+            <div>
+              <h3>Event Participation Report</h3>
+              <p>
+                Request event participation and feedback summaries from
+                the available report endpoints.
+              </p>
+            </div>
+            <button
+              className="rc-button rc-button-primary"
+              onClick={loadEventReport}
+              disabled={reportLoading}
+            >
+              {reportLoading ? "Loading..." : "Generate Report"}
+            </button>
           </div>
 
-          <p style={{ color: colors.muted, fontSize: 12, textAlign: "center", marginTop: 25 }}>
-            ReConnect • Connecting Students and Alumni
-          </p>
-        </>
-      );
+          {reportData && (
+            <div className="rc-report-result">
+              {reportData.participation && (
+                <div className="rc-report-data">
+                  <h4>Event Participation</h4>
+                  <pre>
+                    {JSON.stringify(reportData.participation, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {reportData.feedback && (
+                <div className="rc-report-data">
+                  <h4>Event Feedback Summary</h4>
+                  <pre>
+                    {JSON.stringify(reportData.feedback, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            className="rc-button rc-button-light"
+            onClick={() => window.print()}
+          >
+            Print Report
+          </button>
+        </section>
+      </>
+    );
+  }
+
+  function renderActiveSection() {
+    switch (activeSection) {
+      case "dashboard":
+        return renderDashboard();
+      case "validate":
+        return renderValidateUsers();
+      case "users":
+        return renderUsers();
+      case "mentorships":
+        return renderMentorships();
+      case "opportunities":
+        return renderOpportunities();
+      case "events":
+        return renderEvents();
+      case "feedback":
+        return renderFeedback();
+      case "notifications":
+        return renderNotifications();
+      case "reports":
+        return renderReports();
+      default:
+        return renderDashboard();
     }
-
-    return null;
-
   }
 
   return (
-
-    <div
-
-      className="admin-shell"
-
-      style={{
-
-        minHeight: "100vh",
-
-        background: colors.bg,
-
-        color: colors.ink,
-
-        fontFamily: "Inter, Segoe UI, Arial, sans-serif"
-
-      }}
-
-    >
-
+    <div className="rc-admin">
       <style>{`
-
-        * { box-sizing: border-box; }
-
-        .admin-layout {
-
-          display: flex;
-
-          min-height: calc(100vh - 72px);
-
+        .rc-admin {
+          --rc-blue: #4169e1;
+          --rc-ink: #202b45;
+          --rc-muted: #77839b;
+          --rc-border: #e8edf5;
+          min-height: 100vh;
+          background: #f4f7fc;
+          color: var(--rc-ink);
+          font-family: Inter, "Segoe UI", Arial, sans-serif;
+          font-size: 14px;
+          line-height: 1.5;
         }
 
-        .admin-sidebar {
-
-          width: 245px;
-
-          flex-shrink: 0;
-
-          padding: 20px 14px;
-
-          background: #fff;
-
-          border-right: 1px solid ${colors.border};
-
-          display: flex;
-
-          flex-direction: column;
-
-          gap: 6px;
-
+        .rc-admin * { box-sizing: border-box; }
+        .rc-admin button, .rc-admin input, .rc-admin select {
+          font: inherit;
+        }
+        .rc-admin button { cursor: pointer; }
+        .rc-admin button:disabled { cursor: not-allowed; opacity: .6; }
+        .rc-admin h2, .rc-admin h3, .rc-admin h4, .rc-admin p {
+          margin-top: 0;
         }
 
-        .admin-main {
-
-          flex: 1;
-
-          min-width: 0;
-
-          padding: 28px;
-
-        }
-
-        .admin-nav {
-
-          border: 0;
-
-          border-radius: 11px;
-
-          padding: 12px 14px;
-
+        .rc-topbar {
+          height: 76px;
+          padding: 0 30px;
           display: flex;
-
           align-items: center;
-
-          gap: 12px;
-
-          text-align: left;
-
-          cursor: pointer;
-
-          font-size: 13px;
-
-          font-weight: 700;
-
-          color: #69758d;
-
-          background: transparent;
-
-          width: 100%;
-
-        }
-
-        .admin-nav:hover {
-
-          background: #f2f5ff;
-
-          color: ${colors.blue};
-
-        }
-
-        .admin-nav.active {
-
-          background: linear-gradient(100deg,#eaf0ff,#f0ecff);
-
-          color: ${colors.blue};
-
-          box-shadow: inset 3px 0 ${colors.blue};
-
-        }
-
-        .admin-topbar {
-
-          height: 72px;
-
-          background: #fff;
-
-          border-bottom: 1px solid ${colors.border};
-
-          display: flex;
-
-          align-items: center;
-
           justify-content: space-between;
-
-          padding: 0 28px;
-
-          gap: 15px;
-
+          background: #fff;
+          border-bottom: 1px solid var(--rc-border);
+          position: sticky;
+          top: 0;
+          z-index: 30;
         }
 
-        .admin-mobile-title { display: none; }
+        .rc-brand { display: flex; align-items: center; gap: 12px; }
+        .rc-brand-mark {
+          display: grid;
+          place-items: center;
+          width: 42px;
+          height: 42px;
+          color: white;
+          font-size: 21px;
+          font-weight: 800;
+          border-radius: 13px;
+          background: linear-gradient(140deg, #4169e1, #7654d6);
+          box-shadow: 0 5px 15px #4169e133;
+        }
+        .rc-brand-name { font-size: 19px; font-weight: 800; letter-spacing: -.5px; }
+        .rc-brand-subtitle { color: var(--rc-muted); font-size: 11px; margin-top: -2px; }
+        .rc-top-actions { display: flex; align-items: center; gap: 13px; }
+        .rc-admin-info { text-align: right; }
+        .rc-admin-info strong { display: block; font-size: 13px; }
+        .rc-admin-info span { color: var(--rc-muted); font-size: 11px; }
+        .rc-avatar-top {
+          width: 40px; height: 40px; border-radius: 50%;
+          display: grid; place-items: center;
+          background: #e9edff; color: #4169e1;
+          font-weight: 800; font-size: 15px;
+        }
+        .rc-logout {
+          border: 1px solid #f0dfe2; color: #c43848;
+          background: #fff; border-radius: 9px;
+          padding: 9px 13px; font-weight: 650;
+        }
+        .rc-logout:hover { background: #fff3f4; }
 
-        @media(max-width:850px) {
+        .rc-layout { display: flex; min-height: calc(100vh - 76px); }
+        .rc-sidebar {
+          width: 250px; flex-shrink: 0; background: #fff;
+          border-right: 1px solid var(--rc-border);
+          padding: 24px 14px;
+        }
+        .rc-sidebar-heading {
+          font-size: 10px; font-weight: 800; letter-spacing: 1.25px;
+          color: #a2aabd; padding: 0 12px; margin: 8px 0 9px;
+        }
+        .rc-nav-group { margin-bottom: 24px; }
+        .rc-nav-item {
+          display: flex; width: 100%; align-items: center; gap: 12px;
+          text-align: left; padding: 11px 12px; margin: 3px 0;
+          border: 0; border-radius: 10px; color: #64718a;
+          background: transparent; font-weight: 600; font-size: 13px;
+          transition: background .15s, color .15s;
+        }
+        .rc-nav-item:hover { background: #f4f6ff; color: var(--rc-blue); }
+        .rc-nav-item.active {
+          color: #4169e1; background: #edf1ff;
+          box-shadow: inset 3px 0 #4169e1;
+        }
+        .rc-nav-icon {
+          width: 22px; text-align: center; font-size: 18px;
+          font-weight: 600;
+        }
+        .rc-nav-count {
+          margin-left: auto; border-radius: 20px;
+          background: #fff0d8; color: #9b6511;
+          padding: 2px 7px; font-size: 10px; font-weight: 800;
+        }
+        .rc-sidebar-note {
+          margin: 22px 3px 0; padding: 16px;
+          border: 1px solid #e6eaff; border-radius: 13px;
+          background: linear-gradient(145deg, #f7f8ff, #eff2ff);
+        }
+        .rc-sidebar-note strong { display: block; font-size: 12px; margin-bottom: 5px; }
+        .rc-sidebar-note p { margin: 0; color: var(--rc-muted); font-size: 11px; }
 
-          .admin-layout { display: block; }
+        .rc-main { min-width: 0; flex: 1; padding: 28px 30px 38px; }
+        .rc-page-heading {
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 16px; margin-bottom: 23px;
+        }
+        .rc-breadcrumb { color: var(--rc-muted); font-size: 12px; margin-bottom: 4px; }
+        .rc-page-heading h1 { margin: 0; font-size: 25px; letter-spacing: -.7px; }
+        .rc-page-heading p { color: var(--rc-muted); margin: 5px 0 0; font-size: 13px; }
+        .rc-menu-button { display: none; }
 
-          .admin-sidebar {
-
-            width: 100%;
-
-            flex-direction: row;
-
-            overflow-x: auto;
-
-            padding: 10px 12px;
-
-            border-right: 0;
-
-            border-bottom: 1px solid ${colors.border};
-
-          }
-
-          .admin-nav {
-
-            width: auto;
-
-            white-space: nowrap;
-
-            flex-shrink: 0;
-
-            padding: 10px 12px;
-
-          }
-
-          .admin-main { padding: 20px 15px; }
-
-          .admin-topbar { padding: 0 16px; }
-
-          .admin-mobile-title { display: block; }
-
+        .rc-hero {
+          min-height: 228px; border-radius: 19px; padding: 31px 35px;
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 20px; position: relative; overflow: hidden;
+          color: white; margin-bottom: 29px;
+          background: linear-gradient(115deg, #345bd4 0%, #5555d6 53%, #7954d8 100%);
+          box-shadow: 0 12px 28px #465fca26;
+        }
+        .rc-hero-content { max-width: 570px; position: relative; z-index: 2; }
+        .rc-hero-label {
+          display: inline-block; border: 1px solid #ffffff55;
+          background: #ffffff18; border-radius: 30px;
+          padding: 5px 10px; font-size: 10px; font-weight: 800;
+          letter-spacing: 1.4px; margin-bottom: 15px;
+        }
+        .rc-hero h2 {
+          color: #fff; font-size: clamp(22px, 2.5vw, 31px);
+          line-height: 1.2; letter-spacing: -.7px; margin: 0 0 10px;
+        }
+        .rc-hero p {
+          color: #eef0ff; font-size: 13px; line-height: 1.7;
+          max-width: 530px; margin: 0 0 19px;
+        }
+        .rc-hero-button {
+          background: #fff; color: #435bc4; border: 0;
+          padding: 10px 15px; border-radius: 9px;
+          font-weight: 750; font-size: 12px;
+          display: inline-flex; gap: 13px; align-items: center;
+        }
+        .rc-hero-button:hover { background: #f1f3ff; }
+        .rc-hero-decoration { position: relative; width: 210px; height: 170px; flex-shrink: 0; }
+        .rc-orbit {
+          position: absolute; border: 1px solid #ffffff40;
+          border-radius: 50%; transform: rotate(-24deg);
+        }
+        .rc-orbit-one { width: 190px; height: 115px; top: 24px; left: 5px; }
+        .rc-orbit-two { width: 135px; height: 175px; top: -3px; left: 35px; }
+        .rc-hero-symbol {
+          position: absolute; top: 36px; left: 58px; width: 90px; height: 90px;
+          display: grid; place-items: center; border-radius: 26px;
+          background: #ffffff20; border: 1px solid #ffffff45;
+          font-size: 52px; font-weight: 800; color: #fff;
+          transform: rotate(-7deg);
         }
 
-        @media(max-width:480px) {
+        .rc-section-heading, .rc-panel-heading {
+          display: flex; justify-content: space-between;
+          align-items: center; gap: 14px;
+        }
+        .rc-section-heading { margin-bottom: 16px; }
+        .rc-section-heading h2 { font-size: 19px; margin: 0 0 4px; letter-spacing: -.35px; }
+        .rc-section-heading p, .rc-panel-heading p {
+          color: var(--rc-muted); font-size: 12px; margin: 0;
+        }
+        .rc-panel-heading { margin-bottom: 20px; }
+        .rc-panel-heading h3 { font-size: 16px; margin: 0 0 4px; letter-spacing: -.2px; }
 
-          .admin-topbar {
+        .rc-button {
+          display: inline-flex; justify-content: center; align-items: center;
+          gap: 7px; border-radius: 8px; padding: 9px 12px;
+          font-weight: 700; font-size: 12px; white-space: nowrap;
+          border: 1px solid transparent; transition: .15s;
+        }
+        .rc-button-light { background: #fff; color: #52617a; border-color: var(--rc-border); }
+        .rc-button-light:hover { border-color: #c9d3ef; background: #f9faff; }
+        .rc-button-primary { background: #4169e1; color: white; }
+        .rc-button-primary:hover { background: #3155c8; }
+        .rc-button-success { background: #e4f7ee; color: #14845f; }
+        .rc-button-success:hover { background: #d2f0e2; }
+        .rc-button-danger { background: #fff0f1; color: #c43848; }
+        .rc-button-danger:hover { background: #ffe0e3; }
+        .rc-text-button { color: #4169e1; background: none; border: 0; font-size: 12px; font-weight: 750; }
+        .rc-text-button:hover { color: #7654d6; }
+        .rc-count {
+          padding: 6px 10px; border-radius: 20px; color: #6b54c7;
+          background: #f0ecff; font-size: 11px; font-weight: 750;
+        }
 
-            height: auto;
+        .rc-stats-grid {
+          display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px; margin-bottom: 27px;
+        }
+        .rc-stat-card {
+          min-width: 0; text-align: left; position: relative; overflow: hidden;
+          background: #fff; border: 1px solid var(--rc-border);
+          border-radius: 15px; padding: 18px 19px 17px;
+          box-shadow: 0 2px 7px #263e7010;
+          transition: transform .18s, box-shadow .18s, border-color .18s;
+          color: var(--rc-ink);
+        }
+        .rc-stat-card:hover {
+          transform: translateY(-3px); border-color: #d6def7;
+          box-shadow: 0 10px 24px #263e7014;
+        }
+        .rc-stat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .rc-stat-icon {
+          display: grid; place-items: center; width: 43px; height: 43px;
+          border-radius: 12px; color: var(--card-color);
+          background: color-mix(in srgb, var(--card-color) 11%, white);
+          font-size: 22px; font-weight: 700;
+        }
+        .rc-stat-arrow { color: #a4adc0; font-size: 16px; }
+        .rc-stat-value { font-size: 30px; line-height: 1.15; font-weight: 800; letter-spacing: -1px; }
+        .rc-stat-label { color: var(--rc-muted); font-size: 12px; margin-top: 5px; font-weight: 600; }
+        .rc-stat-line { position: absolute; left: 0; bottom: 0; width: 100%; height: 3px; background: var(--card-color); opacity: .75; }
 
-            min-height: 68px;
+        .rc-content-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+        .rc-panel {
+          background: #fff; border: 1px solid var(--rc-border);
+          border-radius: 15px; padding: 22px;
+          box-shadow: 0 2px 7px #263e7008; min-width: 0;
+        }
+        .rc-activity-list { display: flex; flex-direction: column; }
+        .rc-activity-item {
+          display: flex; align-items: center; gap: 11px;
+          padding: 12px 0; border-bottom: 1px solid #f0f2f7;
+        }
+        .rc-activity-item:last-child { border-bottom: 0; }
+        .rc-avatar {
+          display: grid; place-items: center; flex-shrink: 0;
+          width: 38px; height: 38px; border-radius: 12px;
+          color: #5368c8; background: #eef1ff; font-weight: 800;
+        }
+        .rc-activity-info { min-width: 0; flex: 1; }
+        .rc-activity-info strong { display: block; font-size: 12px; overflow-wrap: anywhere; }
+        .rc-activity-info span { display: block; color: var(--rc-muted); font-size: 11px; margin-top: 3px; overflow-wrap: anywhere; }
 
-            padding: 12px;
+        .rc-quick-actions { display: flex; flex-direction: column; }
+        .rc-quick-action {
+          display: flex; align-items: center; gap: 11px;
+          padding: 12px 0; border: 0; border-bottom: 1px solid #f0f2f7;
+          background: transparent; text-align: left; color: var(--rc-ink);
+        }
+        .rc-quick-action:last-child { border-bottom: 0; }
+        .rc-quick-action:hover .rc-quick-icon { background: #e9edff; }
+        .rc-quick-icon {
+          width: 39px; height: 39px; display: grid; place-items: center;
+          flex-shrink: 0; border-radius: 11px; background: #f3f5ff;
+          color: #5266d0; font-size: 18px;
+        }
+        .rc-quick-text { min-width: 0; flex: 1; }
+        .rc-quick-text strong { display: block; font-size: 12px; }
+        .rc-quick-text small { display: block; font-size: 11px; color: var(--rc-muted); margin-top: 3px; }
+        .rc-quick-arrow { color: #a1abc0; font-size: 18px; }
 
+        .rc-status {
+          display: inline-flex; align-items: center; white-space: nowrap;
+          border-radius: 20px; padding: 5px 9px; font-size: 10px;
+          font-weight: 800; text-transform: capitalize;
+        }
+        .rc-table-wrap { width: 100%; overflow-x: auto; }
+        .rc-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .rc-table th {
+          color: #8b96aa; background: #fafbfe; font-size: 10px;
+          font-weight: 800; letter-spacing: .65px;
+          padding: 13px 12px; border-bottom: 1px solid var(--rc-border);
+          white-space: nowrap;
+        }
+        .rc-table td {
+          padding: 14px 12px; border-bottom: 1px solid #eef1f7;
+          color: #4c5972; font-size: 12px; vertical-align: middle;
+        }
+        .rc-table tbody tr:last-child td { border-bottom: 0; }
+        .rc-table tbody tr:hover { background: #fbfcff; }
+        .rc-user-cell { display: flex; align-items: center; gap: 10px; min-width: 150px; }
+        .rc-user-cell strong { display: block; color: var(--rc-ink); font-size: 12px; }
+        .rc-user-cell span { display: block; font-size: 11px; color: var(--rc-muted); margin-top: 3px; overflow-wrap: anywhere; }
+        .rc-secondary { color: var(--rc-muted); font-size: 11px; margin-top: 3px; }
+        .rc-action-group { display: flex; gap: 5px; flex-wrap: wrap; }
+        .rc-icon-button {
+          display: inline-grid; place-items: center;
+          width: 30px; height: 30px; border-radius: 8px;
+          border: 1px solid var(--rc-border); background: #fff;
+          color: #52617a; font-size: 13px;
+        }
+        .rc-icon-button:hover { background: #f4f6ff; border-color: #d5dcf2; }
+        .rc-icon-danger { color: #c43848; }
+        .rc-icon-danger:hover { background: #fff0f1; border-color: #f5cbd0; }
+
+        .rc-filters {
+          display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 19px;
+        }
+        .rc-input {
+          min-width: 0; border: 1px solid #dfe5f0;
+          border-radius: 9px; padding: 10px 12px;
+          color: var(--rc-ink); background: #fff; outline: none;
+          font-size: 12px;
+        }
+        .rc-input:focus { border-color: #7891ed; box-shadow: 0 0 0 3px #4169e114; }
+        .rc-filters .rc-input:first-child { flex: 1; min-width: 190px; }
+        .rc-filters select { min-width: 125px; }
+
+        .rc-empty { text-align: center; padding: 35px 18px; color: var(--rc-muted); }
+        .rc-empty-icon {
+          margin: 0 auto 12px; width: 47px; height: 47px;
+          border-radius: 15px; display: grid; place-items: center;
+          background: #f0f3ff; color: #6579d7; font-size: 22px;
+        }
+        .rc-empty h3 { font-size: 14px; color: var(--rc-ink); margin: 0 0 5px; }
+        .rc-empty p { font-size: 12px; margin: 0; }
+
+        .rc-notification-list { display: flex; flex-direction: column; }
+        .rc-notification {
+          display: flex; align-items: flex-start; gap: 14px;
+          padding: 17px 0; border-bottom: 1px solid #eef1f7;
+        }
+        .rc-notification:last-child { border-bottom: 0; }
+        .rc-notification-unread { background: linear-gradient(90deg, #f8f9ff, #fff); }
+        .rc-notification-icon {
+          display: grid; place-items: center; flex-shrink: 0;
+          width: 39px; height: 39px; border-radius: 12px;
+          background: #edf1ff; color: #4169e1;
+        }
+        .rc-notification-body { flex: 1; min-width: 0; }
+        .rc-notification-body strong { font-size: 13px; }
+        .rc-notification-body p { color: #596781; font-size: 12px; margin: 5px 0; overflow-wrap: anywhere; }
+        .rc-notification-body span { color: #929db0; font-size: 10px; }
+        .rc-notification-actions { display: flex; align-items: flex-end; flex-direction: column; gap: 9px; }
+
+        .rc-report-intro {
+          display: flex; align-items: center; gap: 15px;
+          background: linear-gradient(110deg, #edf1ff, #f8f5ff);
+          border: 1px solid #e4e8ff; border-radius: 15px;
+          padding: 22px; margin-bottom: 20px;
+        }
+        .rc-report-symbol {
+          width: 50px; height: 50px; display: grid; place-items: center;
+          flex-shrink: 0; border-radius: 14px; background: #fff;
+          color: #5c63d6; font-size: 23px;
+        }
+        .rc-report-intro h3 { margin: 0 0 5px; font-size: 17px; }
+        .rc-report-intro p { margin: 0; color: var(--rc-muted); font-size: 12px; }
+        .rc-report-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .rc-report-card {
+          background: #fff; border: 1px solid var(--rc-border);
+          border-radius: 14px; padding: 19px;
+          box-shadow: 0 2px 7px #263e7008;
+        }
+        .rc-report-card-icon {
+          width: 40px; height: 40px; display: grid; place-items: center;
+          background: #edf1ff; color: #5266d0;
+          border-radius: 12px; font-size: 20px; margin-bottom: 13px;
+        }
+        .rc-report-card h4 { font-size: 13px; margin: 0 0 6px; }
+        .rc-report-card p { color: var(--rc-muted); font-size: 11px; min-height: 34px; margin-bottom: 15px; }
+        .rc-event-report { margin-bottom: 25px; }
+        .rc-report-result { display: grid; gap: 14px; margin-bottom: 17px; }
+        .rc-report-data { border: 1px solid var(--rc-border); border-radius: 10px; padding: 14px; min-width: 0; }
+        .rc-report-data h4 { margin: 0 0 10px; font-size: 13px; }
+        .rc-report-data pre {
+          white-space: pre-wrap; overflow-wrap: anywhere;
+          max-height: 350px; overflow: auto; font-size: 11px;
+          background: #f7f8fc; border-radius: 8px; padding: 12px;
+        }
+
+        .rc-alert {
+          display: flex; align-items: flex-start; gap: 10px;
+          padding: 12px 15px; border-radius: 10px; margin-bottom: 18px;
+          font-size: 12px; font-weight: 600;
+        }
+        .rc-alert-error { color: #a62e3d; background: #fff0f1; border: 1px solid #f8d9dd; }
+        .rc-alert-success { color: #14724f; background: #e8f8f0; border: 1px solid #cdeedd; }
+        .rc-footer { text-align: center; padding: 23px 10px 0; color: #9aa4b6; font-size: 11px; }
+
+        .rc-spin { display: inline-block; animation: rc-rotation .8s linear infinite; }
+        @keyframes rc-rotation { to { transform: rotate(360deg); } }
+
+        @media (max-width: 1150px) {
+          .rc-main { padding: 24px 21px 32px; }
+          .rc-sidebar { width: 220px; }
+          .rc-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+          .rc-stat-card { padding: 16px; }
+          .rc-content-grid { gap: 14px; }
+          .rc-panel { padding: 18px; }
+        }
+
+        @media (max-width: 850px) {
+          .rc-topbar { padding: 0 18px; }
+          .rc-layout { display: block; }
+          .rc-sidebar {
+            display: none; position: fixed; z-index: 40;
+            top: 76px; bottom: 0; left: 0; width: 270px;
+            overflow-y: auto; box-shadow: 10px 0 30px #17264a22;
           }
+          .rc-sidebar.rc-sidebar-open { display: block; }
+          .rc-menu-button {
+            display: inline-grid; place-items: center;
+            width: 38px; height: 38px; border-radius: 9px;
+            border: 1px solid var(--rc-border); background: #fff;
+            color: var(--rc-ink); font-size: 20px;
+          }
+          .rc-main { padding: 23px 19px 30px; }
+          .rc-content-grid { grid-template-columns: 1fr; }
+          .rc-hero { padding: 27px; }
+          .rc-hero-decoration { opacity: .65; width: 150px; }
+          .rc-orbit-one { width: 140px; }
+          .rc-orbit-two { left: 10px; }
+          .rc-hero-symbol { left: 25px; }
+          .rc-report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
 
-          .admin-topbar h2 { font-size: 16px !important; }
-
-          .admin-main { padding: 16px 11px; }
-
+        @media (max-width: 560px) {
+          .rc-topbar { height: 66px; padding: 0 12px; }
+          .rc-brand-mark { width: 36px; height: 36px; border-radius: 11px; }
+          .rc-brand-name { font-size: 16px; }
+          .rc-brand-subtitle { font-size: 10px; }
+          .rc-admin-info { display: none; }
+          .rc-avatar-top { width: 34px; height: 34px; }
+          .rc-logout { padding: 8px 9px; font-size: 11px; }
+          .rc-sidebar { top: 66px; }
+          .rc-main { padding: 19px 12px 26px; }
+          .rc-page-heading { align-items: flex-start; }
+          .rc-page-heading h1 { font-size: 22px; }
+          .rc-hero { min-height: 0; padding: 23px 19px; border-radius: 15px; }
+          .rc-hero h2 { font-size: 23px; }
+          .rc-hero p { font-size: 12px; }
+          .rc-hero-decoration { display: none; }
+          .rc-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+          .rc-stat-card { padding: 14px 13px 15px; border-radius: 12px; }
+          .rc-stat-icon { width: 36px; height: 36px; font-size: 19px; }
+          .rc-stat-value { font-size: 25px; }
+          .rc-stat-label { font-size: 11px; }
+          .rc-section-heading h2 { font-size: 17px; }
+          .rc-section-heading { align-items: flex-start; }
+          .rc-panel { padding: 15px 12px; border-radius: 12px; }
+          .rc-panel-heading { align-items: flex-start; flex-wrap: wrap; }
+          .rc-panel-heading h3 { font-size: 15px; }
+          .rc-filters { display: grid; grid-template-columns: 1fr 1fr; }
+          .rc-filters .rc-input:first-child { grid-column: 1 / -1; min-width: 0; }
+          .rc-filters select { min-width: 0; width: 100%; }
+          .rc-report-grid { grid-template-columns: 1fr; }
+          .rc-report-card p { min-height: 0; }
+          .rc-notification { flex-wrap: wrap; gap: 10px; }
+          .rc-notification-body { min-width: calc(100% - 55px); }
+          .rc-notification-actions { margin-left: 49px; align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+          .rc-table th, .rc-table td { padding: 12px 10px; }
+          .rc-report-intro { padding: 16px; align-items: flex-start; }
         }
 
         @media print {
-
-          body { background: #fff !important; }
-
-          .admin-topbar,
-
-          .admin-sidebar,
-
-          .no-print,
-
-          .admin-message {
-
-            display: none !important;
-
-          }
-
-          .admin-main { padding: 0 !important; }
-
-          .admin-shell { background: #fff !important; }
-
-          #reconnect-report {
-
-            box-shadow: none !important;
-
-            border: 0 !important;
-
-            max-width: none !important;
-
-          }
-
+          .rc-topbar, .rc-sidebar, .rc-page-heading,
+          .rc-button, .rc-text-button, .rc-logout, .rc-footer,
+          .rc-hero-button, .rc-menu-button { display: none !important; }
+          .rc-admin, .rc-main { background: white !important; padding: 0 !important; }
+          .rc-panel, .rc-report-card, .rc-stat-card { box-shadow: none !important; break-inside: avoid; }
+          .rc-content-grid, .rc-stats-grid, .rc-report-grid { grid-template-columns: repeat(2, 1fr); }
         }
 
+        /* ReConnect visual refresh: presentation only, no API or state changes */
+        .rc-admin { --rc-blue:#6258e8; --rc-ink:#192342; --rc-muted:#7885a1; --rc-border:#e8eaf5; background:#f6f7fc; }
+        .rc-topbar { height:78px; padding:0 34px; background:#ffffffed; backdrop-filter:blur(18px); border-bottom:1px solid #e9ebf5; box-shadow:0 2px 15px #252c5410; }
+        .rc-brand-mark { background:linear-gradient(135deg,#6960f5,#a34cdb); border-radius:15px; box-shadow:0 7px 18px #7465e83b; }
+        .rc-brand-name { color:#1b2343; font-size:21px; }
+        .rc-avatar-top { background:linear-gradient(135deg,#eeeaff,#e1eaff); color:#6757d8; }
+        .rc-logout { background:#fff1f3; border-color:transparent; border-radius:12px; padding:11px 17px; }
+        .rc-layout { min-height:calc(100vh - 78px); }
+        .rc-sidebar { width:264px; background:#171d39; border-right:0; padding:27px 14px 22px; display:flex; flex-direction:column; }
+        .rc-sidebar-heading { color:#929bbd; font-size:10px; letter-spacing:1.7px; margin:15px 0 12px; }
+        .rc-nav-group { margin-bottom:8px; }
+        .rc-nav-item { color:#c3c9e2; padding:13px 15px; border-radius:12px; margin:4px 0; font-size:13px; transition:background .2s,transform .2s,color .2s; }
+        .rc-nav-item:hover { background:#ffffff13; color:#fff; transform:translateX(3px); }
+        .rc-nav-item.active { background:linear-gradient(95deg,#6556ed,#7b65ef); color:#fff; box-shadow:0 6px 18px #080d2740; }
+        .rc-nav-icon { font-size:19px; color:inherit; }
+        .rc-sidebar-note { margin-top:auto; background:linear-gradient(140deg,#2a3158,#262a4a); border:1px solid #ffffff1b; border-radius:15px; padding:18px; }
+        .rc-sidebar-note strong { color:#fff; }
+        .rc-sidebar-note p { color:#b0b8d3; }
+        .rc-main { padding:32px 35px 45px; background:radial-gradient(circle at 94% 0%,#eeebff 0,transparent 35%),#f6f7fc; }
+        .rc-page-heading h1 { font-size:29px; font-weight:800; color:#1b2444; }
+        .rc-breadcrumb { color:#8a92ab; }
+        .rc-hero { min-height:240px; padding:37px 42px; border-radius:23px; background:linear-gradient(112deg,#343a8b 0%,#6252d5 53%,#9b57dd 100%); box-shadow:0 18px 40px #5b54c62a; margin-bottom:28px; }
+        .rc-hero::before { content:""; position:absolute; width:360px; height:360px; right:-110px; top:-200px; border-radius:50%; border:55px solid #ffffff10; pointer-events:none; }
+        .rc-hero-label { font-size:11px; background:#ffffff22; border:1px solid #ffffff45; padding:7px 13px; }
+        .rc-hero h2 { font-size:clamp(26px,2.6vw,36px); letter-spacing:-1px; }
+        .rc-hero p { font-size:14px; color:#ecebff; }
+        .rc-hero-button { border-radius:11px; padding:12px 18px; color:#5449bf; box-shadow:0 7px 20px #242c6630; }
+        .rc-hero-symbol { background:#ffffff23; border-radius:25px; box-shadow:0 15px 35px #20236535; }
+        .rc-section-heading h2 { font-size:21px; }
+        .rc-stats-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; margin-bottom:25px; }
+        .rc-stat-card { min-height:166px; border-radius:18px; padding:21px 23px; border:1px solid #eceef7; box-shadow:0 8px 25px #252e6110; }
+        .rc-stat-card:hover { transform:translateY(-5px); border-color:color-mix(in srgb,var(--card-color) 35%,white); box-shadow:0 16px 35px #292d6b22; }
+        .rc-stat-icon { width:49px; height:49px; border-radius:15px; font-size:24px; }
+        .rc-stat-value { font-size:35px; color:#1c2648; letter-spacing:-1.5px; }
+        .rc-stat-label { font-size:13px; color:#687795; }
+        .rc-stat-line { height:4px; opacity:.8; }
+        .rc-panel,.rc-report-card { border:1px solid #e9ebf5; border-radius:19px; box-shadow:0 8px 28px #27345b0c; }
+        .rc-panel { padding:26px; }
+        .rc-panel-heading h3 { font-size:18px; }
+        .rc-quick-action { border-radius:10px; padding:13px 10px; }
+        .rc-quick-action:hover { background:#f7f6ff; }
+        .rc-button { border-radius:10px; padding:10px 15px; }
+        .rc-button-primary { background:#6258e8; }
+        .rc-button-primary:hover { background:#5145d0; }
+        .rc-button-light { background:#f8f8ff; border-color:#e7e7fa; color:#5d5a91; }
+        .rc-avatar { border-radius:13px; }
+        .rc-input { border-radius:11px; }
+        .rc-admin button:focus-visible { outline:3px solid #a79cff; outline-offset:3px; }
+        /* Dashboard bottom: clean ending without an artificial footer bar. */
+        .rc-content-grid { align-items: stretch; margin-bottom: 12px; }
+        .rc-content-grid > .rc-panel { min-height: 280px; }
+        .rc-quick-actions { gap: 5px; }
+        .rc-quick-action:last-child { border-bottom: 0; }
+        @media(max-width:1150px) { .rc-stats-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .rc-main { padding:25px; } }
+        @media(max-width:760px) { .rc-topbar { padding:0 15px; } .rc-main { padding:18px 14px 30px; } .rc-hero { padding:28px 23px; } .rc-stats-grid { gap:12px; } .rc-stat-card { padding:16px; min-height:145px; } .rc-stat-value { font-size:29px; } .rc-sidebar { box-shadow:12px 0 32px #12173330; } }
+        @media(max-width:480px) { .rc-stats-grid { grid-template-columns:1fr; } }
       `}</style>
 
-      <header className="admin-topbar">
-
-        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-
-          <div
-
-            style={{
-
-              width: 40,
-
-              height: 40,
-
-              borderRadius: 13,
-
-              display: "grid",
-
-              placeItems: "center",
-
-              color: "#fff",
-
-              fontSize: 22,
-
-              fontWeight: 900,
-
-              background: "linear-gradient(135deg,#4169e1,#7654d6)"
-
-            }}
-
-          >
-
-            R
-
-          </div>
-
-          <div>
-
-            <h2
-
-              style={{
-
-                margin: 0,
-
-                fontSize: 19,
-
-                color: colors.ink,
-
-                fontWeight: 850
-
-              }}
-
-            >
-
-              ReConnect
-
-            </h2>
-
-            <small style={{ color: colors.muted, fontSize: 11 }}>
-
-              Admin Console
-
-            </small>
-
-          </div>
-
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-
-          <div style={{ textAlign: "right" }}>
-
-            <div
-
-              style={{
-
-                fontSize: 12,
-
-                color: colors.ink,
-
-                fontWeight: 800
-
-              }}
-
-            >
-
-              {adminName}
-
-            </div>
-
-            <small style={{ color: colors.muted, fontSize: 10 }}>
-
-              Administrator
-
-            </small>
-
-          </div>
-
-          <div
-
-            style={{
-
-              width: 37,
-
-              height: 37,
-
-              borderRadius: "50%",
-
-              background: "#eaf0ff",
-
-              color: colors.blue,
-
-              display: "grid",
-
-              placeItems: "center",
-
-              fontWeight: 850
-
-            }}
-
-          >
-
-            {adminName.charAt(0).toUpperCase()}
-
-          </div>
-
+      <header className="rc-topbar">
+        <div className="rc-brand">
           <button
-
-            className="no-print"
-
-            style={{
-
-              ...button,
-
-              background: "#fff0f1",
-
-              color: "#b52d3b"
-
-            }}
-
-            onClick={logout}
-
+            className="rc-menu-button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            aria-label="Toggle navigation"
           >
-
-            Logout
-
+            ☰
           </button>
-
+          <div className="rc-brand-mark">R</div>
+          <div>
+            <div className="rc-brand-name">ReConnect</div>
+            <div className="rc-brand-subtitle">Admin workspace</div>
+          </div>
         </div>
 
+        <div className="rc-top-actions">
+          <div className="rc-admin-info">
+            <strong>{adminName}</strong>
+            <span>{adminEmail}</span>
+          </div>
+          <div className="rc-avatar-top">
+            {String(adminName).charAt(0).toUpperCase()}
+          </div>
+          <button className="rc-logout" onClick={logout}>
+            Logout ↗
+          </button>
+        </div>
       </header>
 
-      <div className="admin-layout">
-
-        <aside className="admin-sidebar">
-
-          <div
-
-            className="admin-mobile-title"
-
-            style={{
-
-              padding: "5px 9px",
-
-              color: colors.muted,
-
-              fontSize: 10,
-
-              fontWeight: 800
-
-            }}
-
-          >
-
-            MENU
-
-          </div>
-
-          <div
-
-            className="no-print"
-
-            style={{
-
-              color: "#a0a9ba",
-
-              fontSize: 10,
-
-              fontWeight: 800,
-
-              padding: "5px 13px 9px",
-
-              letterSpacing: 1
-
-            }}
-
-          >
-
-            WORKSPACE
-
-          </div>
-
-          {sections.map((item) => (
-
-            <button
-
-              key={item.name}
-
-              className={`admin-nav ${
-
-                section === item.name ? "active" : ""
-
-              }`}
-
-              onClick={() => {
-
-                setSection(item.name);
-
-                setMessage("");
-
-              }}
-
-            >
-
-              <span
-
-                style={{
-
-                  fontSize: 19,
-
-                  width: 23,
-
-                  textAlign: "center"
-
-                }}
-
-              >
-
-                {item.icon}
-
-              </span>
-
-              {item.name}
-
-              {item.name === "Validate Users" &&
-
-                stats.pendingApprovals > 0 && (
-
-                  <span
-
-                    style={{
-
-                      marginLeft: "auto",
-
-                      background: "#ffedcc",
-
-                      color: "#98600a",
-
-                      borderRadius: 20,
-
-                      padding: "3px 7px",
-
-                      fontSize: 10
-
-                    }}
-
+      <div className="rc-layout">
+        <aside
+          className={`rc-sidebar ${mobileMenuOpen ? "rc-sidebar-open" : ""}`}
+        >
+          {["WORKSPACE", "MANAGEMENT", "REPORTS"].map((group) => (
+            <div className="rc-nav-group" key={group}>
+              <div className="rc-sidebar-heading">{group}</div>
+              {NAVIGATION.filter((item) => item.group === group).map(
+                (item) => (
+                  <button
+                    key={item.id}
+                    className={`rc-nav-item ${activeSection === item.id ? "active" : ""}`}
+                    onClick={() => openSection(item.id)}
                   >
-
-                    {stats.pendingApprovals}
-
-                  </span>
-
-                )}
-
-            </button>
-
+                    <span className="rc-nav-icon">{item.icon}</span>
+                    <span>{item.label}</span>
+                    {item.id === "validate" && pendingUsers.length > 0 && (
+                      <span className="rc-nav-count">{pendingUsers.length}</span>
+                    )}
+                  </button>
+                )
+              )}
+            </div>
           ))}
 
-          <div
-
-            className="no-print"
-
-            style={{
-
-              marginTop: "auto",
-
-              padding: 13,
-
-              borderRadius: 14,
-
-              background: "#f5f7ff"
-
-            }}
-
-          >
-
-            <div
-
-              style={{
-
-                fontSize: 11,
-
-                color: colors.ink,
-
-                fontWeight: 800,
-
-                marginBottom: 5
-
-              }}
-
-            >
-
-              ReConnect Admin
-
-            </div>
-
-            <div
-
-              style={{
-
-                fontSize: 10,
-
-                color: colors.muted,
-
-                lineHeight: 1.5
-
-              }}
-
-            >
-
-              Manage the student and alumni community.
-
-            </div>
-
+          <div className="rc-sidebar-note">
+            <strong>ReConnect Admin</strong>
+            <p>
+              Manage the community, monitor activity, and support student-alumni
+              connections.
+            </p>
           </div>
-
         </aside>
 
-        <main className="admin-main">
+        <main className="rc-main">
+          <div className="rc-page-heading">
+            <div>
+              <div className="rc-breadcrumb">
+                ReConnect <span> / </span> Administration
+              </div>
+              <h1>{pageTitles[activeSection] || "Dashboard"}</h1>
+              <p>
+                {activeSection === "dashboard"
+                  ? "Here is what's happening across your platform."
+                  : `Manage and monitor ${pageTitles[activeSection]?.toLowerCase() || "your platform"}.`}
+              </p>
+            </div>
 
-          {message && (
-
-            <div
-
-              className="admin-message"
-
-              style={{
-
-                background: "#eaf4ff",
-
-                border: "1px solid #c9e0ff",
-
-                color: "#245ba6",
-
-                borderRadius: 11,
-
-                padding: "12px 15px",
-
-                marginBottom: 18,
-
-                fontSize: 13,
-
-                display: "flex",
-
-                justifyContent: "space-between",
-
-                gap: 10
-
-              }}
-
-            >
-
-              <span>{message}</span>
-
+            {activeSection !== "dashboard" && (
               <button
-
-                onClick={() => setMessage("")}
-
-                style={{
-
-                  border: 0,
-
-                  background: "transparent",
-
-                  cursor: "pointer",
-
-                  color: "inherit"
-
-                }}
-
+                className="rc-button rc-button-light"
+                onClick={refreshDashboard}
+                disabled={refreshing}
               >
-
-                ✕
-
+                <span className={refreshing ? "rc-spin" : ""}>↻</span>
+                {refreshing ? "Refreshing..." : "Refresh"}
               </button>
+            )}
+          </div>
 
+          {error && (
+            <div className="rc-alert rc-alert-error">
+              <span>!</span>
+              <span>{error}</span>
+              <button
+                className="rc-text-button"
+                onClick={() => setError("")}
+              >
+                Dismiss
+              </button>
             </div>
-
           )}
 
-          {loading && (
-
-            <div
-
-              className="no-print"
-
-              style={{
-
-                color: colors.blue,
-
-                fontSize: 12,
-
-                marginBottom: 12
-
-              }}
-
-            >
-
-              Loading latest information...
-
+          {success && (
+            <div className="rc-alert rc-alert-success">
+              <span>✓</span>
+              <span>{success}</span>
+              <button
+                className="rc-text-button"
+                onClick={() => setSuccess("")}
+              >
+                Dismiss
+              </button>
             </div>
-
           )}
 
-          {renderSection()}
+          {loading ? (
+            <section className="rc-panel">
+              <div className="rc-empty">
+                <div className="rc-empty-icon rc-spin">↻</div>
+                <h3>Loading ReConnect dashboard...</h3>
+                <p>Please wait while the latest information is retrieved.</p>
+              </div>
+            </section>
+          ) : (
+            renderActiveSection()
+          )}
 
         </main>
-
       </div>
-
     </div>
-
   );
-
 }

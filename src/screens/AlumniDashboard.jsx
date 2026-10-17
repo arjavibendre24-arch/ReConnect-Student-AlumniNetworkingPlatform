@@ -884,31 +884,62 @@ function AlumniDashboard() {
     window.location.href = "/login";
   };
 
-  const openSection = (section) => {
-    setMessage("");
-    setActiveSection(section);
 
-    const id = getUserId(user);
-    if (!id) return;
 
-    if (section === "My Profile") loadProfile(id);
-    if (section === "Mentorship") loadMentorships(id);
-    if (section === "Opportunities") loadOpportunities();
-    if (section === "Events" || section === "Feedback Forms") loadEvents();
-    if (section === "Event Reports") loadEventReports(id);
-    if (section === "Notifications") loadNotifications(id);
-  };
+const openSection = (section) => {
+  setActiveSection(section);
+  setMessage("");
+
+  const id = getUserId(user);
+
+  switch (section) {
+    case "Dashboard":
+      break;
+
+    case "My Profile":
+      if (id) loadProfile(id);
+      break;
+
+    case "Mentorship":
+      if (id) loadMentorships(id);
+      break;
+
+    case "Opportunities":
+      loadOpportunities();
+      break;
+
+    case "Events":
+    case "Feedback Forms":
+      loadEvents();
+      break;
+
+    case "Event Reports":
+      if (id) loadEventReports(id);
+      break;
+
+    case "Notifications":
+      if (id) loadNotifications(id);
+      break;
+
+    case "Account":
+      break;
+
+    default:
+      console.warn("Unknown alumni section:", section);
+  }
+};
+
 
   // STYLES
   const pageStyle = {
     minHeight: "100vh",
-    background: "#f5f7fb",
+    background: "#f5f7fc",
     display: "flex"
   };
 
   const sidebarStyle = {
-    width: "240px",
-    background: "#1e293b",
+    width: "252px",
+    background: "#111b35",
     color: "white",
     padding: "25px 15px",
     boxSizing: "border-box",
@@ -920,8 +951,8 @@ function AlumniDashboard() {
   };
 
   const contentStyle = {
-    marginLeft: "240px",
-    width: "calc(100% - 240px)",
+    marginLeft: "252px",
+    width: "calc(100% - 252px)",
     padding: "30px",
     boxSizing: "border-box"
   };
@@ -929,9 +960,10 @@ function AlumniDashboard() {
   const cardStyle = {
     background: "white",
     padding: "25px",
-    borderRadius: "12px",
+    borderRadius: "18px",
     marginBottom: "20px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+    border: "1px solid #e8edf6",
+    boxShadow: "0 8px 30px rgba(31,45,85,0.055)"
   };
 
   const inputStyle = {
@@ -940,17 +972,17 @@ function AlumniDashboard() {
     marginTop: "6px",
     marginBottom: "12px",
     border: "1px solid #d1d5db",
-    borderRadius: "6px",
+    borderRadius: "10px",
     boxSizing: "border-box",
     fontSize: "14px"
   };
 
   const primaryButton = {
     padding: "11px 20px",
-    background: "#2563eb",
+    background: "#5855df",
     color: "white",
     border: "none",
-    borderRadius: "6px",
+    borderRadius: "10px",
     cursor: "pointer",
     fontSize: "14px"
   };
@@ -969,10 +1001,10 @@ function AlumniDashboard() {
     padding: "12px",
     marginBottom: "8px",
     border: "none",
-    borderRadius: "6px",
+    borderRadius: "11px",
     textAlign: "left",
     cursor: "pointer",
-    background: activeSection === item ? "#2563eb" : "transparent",
+    background: activeSection === item ? "#5558db" : "transparent",
     color: "white",
     fontSize: "14px"
   });
@@ -1020,7 +1052,38 @@ function AlumniDashboard() {
   }
 
   return (
-    <div style={pageStyle}>
+    <div className="alumni-shell" style={pageStyle}>
+
+      <style>{`
+        .alumni-shell { font-family: Inter, "Segoe UI", Arial, sans-serif; color: #182744; }
+        .alumni-shell * { box-sizing: border-box; }
+        .alumni-shell aside { box-shadow: 8px 0 35px rgba(12,23,54,.07); z-index: 3; }
+        .alumni-shell aside > h2 { font-size: 27px; letter-spacing: -.9px; }
+        .alumni-shell aside > p { letter-spacing: 1.2px; text-transform: uppercase; font-size: 11px; }
+        .alumni-shell aside > button { transition: background .2s, transform .2s; font-weight: 600; }
+        .alumni-shell aside > button:hover { background: #303d62 !important; transform: translateX(3px); }
+        .alumni-shell aside > button[style*="85, 88, 219"]:hover { background: #5558db !important; }
+        .alumni-shell main { max-width: 1700px; }
+     
+        .alumni-shell main h2 { letter-spacing: -.5px; }
+        .alumni-shell main > div > h2 { font-size: 23px; margin: 26px 0 18px; }
+        .alumni-shell input, .alumni-shell select, .alumni-shell textarea { transition: border-color .2s, box-shadow .2s; background: #fff; }
+        .alumni-shell input:focus, .alumni-shell select:focus, .alumni-shell textarea:focus { outline: none; border-color: #7772e8 !important; box-shadow: 0 0 0 3px #7772e820; }
+        .alumni-shell button { transition: filter .2s, transform .2s; }
+        .alumni-shell main button:hover:not(:disabled) { filter: brightness(.95); transform: translateY(-1px); }
+        .alumni-shell main button:disabled { opacity: .6; cursor: not-allowed; }
+        .alumni-shell .alumni-metrics > div { margin-bottom: 0 !important; min-height: 165px; position: relative; overflow: hidden; border-top: 4px solid var(--metric-accent,#595bdc) !important; }
+        .alumni-shell .alumni-metrics > div::after { content: ""; position: absolute; width: 110px; height: 110px; border-radius: 50%; background: var(--metric-tint,#f1f1ff); right: -55px; bottom: -55px; }
+        .alumni-shell .alumni-metrics h3 { font-size: 13px; color: #65728c; margin: 0 0 14px; }
+        .alumni-shell .alumni-metrics h2 { font-size: 38px; font-weight: 800; margin: 0 0 8px; color: #1b2a48; }
+        .alumni-shell .alumni-metrics p { font-size: 12px; color: #8490a4; margin: 0; }
+        .alumni-shell .alumni-welcome { margin-top: 24px; padding: 30px !important; background: linear-gradient(125deg,#fff,#f7f7ff) !important; }
+        .alumni-shell .alumni-welcome h2 { font-size: 23px; }
+        .alumni-shell .alumni-welcome p { max-width: 780px; line-height: 1.8; color: #65728c; }
+        @media (max-width: 850px) { .alumni-shell aside { width: 200px !important; } .alumni-shell main { margin-left: 200px !important; width: calc(100% - 200px) !important; padding: 18px !important; } }
+        @media (max-width: 600px) { .alumni-shell { display: block !important; } .alumni-shell aside { position: relative !important; width: 100% !important; min-height: 0 !important; max-height: 280px; } .alumni-shell main { margin-left: 0 !important; width: 100% !important; } }
+      `}</style>
+
       <aside style={sidebarStyle}>
         <h2 style={{ textAlign: "center", marginBottom: "10px" }}>
           ReConnect
@@ -1036,30 +1099,35 @@ function AlumniDashboard() {
           Alumni Portal
         </p>
 
-        {menuItems.map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => openSection(item)}
-            style={sectionButtonStyle(item)}
-          >
-            {item}
-
-            {item === "Notifications" && notifications.length > 0 && (
-              <span
-                style={{
-                  float: "right",
-                  background: "#ef4444",
-                  borderRadius: "20px",
-                  padding: "2px 7px",
-                  fontSize: "12px"
-                }}
-              >
-                {notifications.length}
-              </span>
-            )}
-          </button>
-        ))}
+      
+{menuItems.map((item) => (
+  <button
+    key={item}
+    type="button"
+    className={activeSection === item ? "active" : ""}
+    onClick={() => openSection(item)}
+    style={{
+      display: "flex",
+      alignItems: "center",
+      width: "100%",
+      padding: "12px 14px",
+      marginBottom: "5px",
+      border: "none",
+      borderRadius: "12px",
+      textAlign: "left",
+      cursor: "pointer",
+      fontSize: "14px",
+      fontWeight: 600,
+      fontFamily: "inherit",
+      background: activeSection === item ? "#5558db" : "transparent",
+      color: activeSection === item ? "#ffffff" : "#aab5d6",
+      boxShadow:
+        activeSection === item ? "0 8px 20px rgba(85,88,219,.35)" : "none"
+    }}
+  >
+    {item}
+  </button>
+))}
 
         <button
           type="button"
@@ -1080,17 +1148,56 @@ function AlumniDashboard() {
         </button>
       </aside>
 
+      <style>{`
+        .alumni-premium-hero{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;justify-content:space-between;min-height:300px;padding:42px 46px;margin-bottom:28px;border-radius:24px;background:linear-gradient(115deg,#172a6c 0%,#3f48c7 48%,#7554d9 100%);color:#fff;box-shadow:0 22px 46px rgba(49,64,158,.2)}
+        .alumni-premium-hero:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 74% 20%,rgba(255,255,255,.14),transparent 38%);pointer-events:none}
+        .alumni-hero-copy{position:relative;z-index:2;max-width:590px}
+        .alumni-hero-eyebrow{display:inline-flex;align-items:center;gap:9px;padding:7px 13px;border:1px solid rgba(255,255,255,.25);border-radius:50px;background:rgba(255,255,255,.1);font-size:10px;font-weight:800;letter-spacing:1.7px;color:#e7eaff;margin-bottom:22px}
+        .alumni-live-dot{width:7px;height:7px;background:#6cf2d1;border-radius:50%;box-shadow:0 0 0 4px rgba(108,242,209,.16)}
+        .alumni-hero-copy h1{font-size:clamp(29px,3.1vw,45px);line-height:1.13;letter-spacing:-1.6px;margin:0 0 16px;font-weight:850;color:white}
+        .alumni-hero-copy h1 span{color:#d5d2ff}
+        .alumni-hero-copy p{font-size:14px;line-height:1.85;color:#e1e7ff;max-width:530px;margin:0 0 24px}
+        .alumni-hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+        .alumni-hero-actions button{border-radius:11px;padding:12px 17px;font-size:12px;font-weight:800;cursor:pointer;transition:transform .2s,background .2s}
+        .alumni-hero-actions button:hover{transform:translateY(-2px)}
+        .alumni-hero-actions button span{margin-left:12px}
+        .alumni-hero-primary{background:#fff;color:#333fa6;border:1px solid white}
+        .alumni-hero-secondary{background:rgba(255,255,255,.1);color:white;border:1px solid rgba(255,255,255,.35)}
+        .alumni-hero-secondary:hover{background:rgba(255,255,255,.2)}
+        .alumni-hero-visual{position:relative;width:300px;height:245px;flex-shrink:0;z-index:1}
+        .alumni-glow{position:absolute;border-radius:50%;background:rgba(255,255,255,.08)}
+        .alumni-glow-one{width:270px;height:270px;top:-30px;left:25px}.alumni-glow-two{width:190px;height:190px;top:10px;left:65px;border:1px solid rgba(255,255,255,.2)}
+        .alumni-orbit-ring{position:absolute;left:25px;top:35px;width:275px;height:160px;border:1px solid rgba(255,255,255,.24);border-radius:50%;transform:rotate(-29deg)}
+        .alumni-center-mark{position:absolute;left:112px;top:63px;width:112px;height:112px;display:grid;place-items:center;border-radius:30px;transform:rotate(-9deg);background:linear-gradient(145deg,rgba(255,255,255,.33),rgba(255,255,255,.09));border:1px solid rgba(255,255,255,.38);box-shadow:0 18px 38px rgba(14,23,94,.2);font-size:68px;font-weight:900}
+        .alumni-center-mark span{position:absolute;font-size:21px;right:11px;top:5px;color:#f6d895}
+        .alumni-float-tag{position:absolute;padding:10px 13px;border-radius:12px;background:rgba(255,255,255,.95);color:#35428c;font-size:11px;font-weight:800;box-shadow:0 12px 30px rgba(10,19,77,.18);white-space:nowrap}
+        .alumni-float-one{left:0;top:28px}.alumni-float-two{right:-4px;bottom:13px}
+        @media(max-width:1100px){.alumni-hero-visual{width:210px;transform:scale(.8);transform-origin:center right}.alumni-premium-hero{padding:32px}}
+        @media(max-width:760px){.alumni-premium-hero{min-height:0;padding:28px 22px}.alumni-hero-visual{display:none}.alumni-hero-copy h1{font-size:30px}.alumni-hero-actions button{width:100%;justify-content:space-between;display:flex}}
+      `}</style>
+      
       <main style={contentStyle}>
-        <div style={cardStyle}>
-          <h1 style={{ marginTop: 0 }}>Alumni Dashboard</h1>
-          <p>
-            Welcome, <strong>{user.fullName || "Alumni"}</strong>
-          </p>
-          <p style={{ color: "#64748b" }}>
-            Connect with students, provide mentorship, share opportunities,
-            host events and review genuine student feedback.
-          </p>
-        </div>
+        {activeSection === "Dashboard" && (
+        <section className="alumni-premium-hero" aria-label="Alumni welcome">
+          <div className="alumni-hero-copy">
+            <div className="alumni-hero-eyebrow"><span className="alumni-live-dot" /> RECONNECT · ALUMNI PORTAL</div>
+            <h1>Welcome back,<br /><span>{user.fullName || "Alumni"}!</span></h1>
+            <p>Your experience can open doors. Mentor students, share career opportunities, and build a stronger alumni community.</p>
+            <div className="alumni-hero-actions">
+              <button type="button" className="alumni-hero-primary" onClick={() => openSection("Mentorship")}>Explore mentorship <span>↗</span></button>
+              <button type="button" className="alumni-hero-secondary" onClick={() => openSection("Opportunities")}>Share an opportunity <span>→</span></button>
+            </div>
+          </div>
+          <div className="alumni-hero-visual" aria-hidden="true">
+            <div className="alumni-glow alumni-glow-one" />
+            <div className="alumni-glow alumni-glow-two" />
+            <div className="alumni-orbit-ring" />
+            <div className="alumni-center-mark">R<span>✦</span></div>
+            <div className="alumni-float-tag alumni-float-one">✦ &nbsp; Inspire growth</div>
+            <div className="alumni-float-tag alumni-float-two">↗ &nbsp; Build connections</div>
+                   </div>
+        </section>
+        )}
 
         {message && (
           <div
@@ -1110,31 +1217,89 @@ function AlumniDashboard() {
         {/* DASHBOARD */}
         {activeSection === "Dashboard" && (
           <div>
-            <h2>Dashboard</h2>
-
             <div
+              className="alumni-metrics"
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: "20px"
+                gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+                gap: "18px"
               }}
             >
               {[
-                ["Mentorship", mentorships.length, "Student requests"],
-                ["Opportunities", opportunities.length, "Available opportunities"],
-                ["Events Hosted", ownEvents.length, "Your events"],
-                ["Student Feedback", totalFeedback, "Submitted responses"],
-                ["Notifications", notifications.length, "Account updates"]
-              ].map(([title, count, description]) => (
-                <div key={title} style={cardStyle}>
-                  <h3>{title}</h3>
-                  <h2>{count}</h2>
-                  <p>{description}</p>
-                </div>
-              ))}
+                ["Mentorship", mentorships.length, "Student requests", "Mentorship"],
+                ["Opportunities", opportunities.length, "Available opportunities", "Opportunities"],
+                ["Events Hosted", ownEvents.length, "Your events", "Events"],
+                ["Student Feedback", totalFeedback, "Submitted responses", "Event Reports"],
+                ["Notifications", notifications.length, "Account updates", "Notifications"]
+      ].map(([title, count, description, targetSection], index) => {
+  const accent = ["#555de3", "#8a5be0", "#10a788", "#e89b43", "#0e9cb7"][index];
+
+  return (
+    <button
+      key={title}
+      type="button"
+      onClick={() => openSection(targetSection)}
+      aria-label={`Open ${targetSection}: ${title}, ${count}`}
+      style={{
+        ...cardStyle,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        minHeight: "180px",
+        marginBottom: 0,
+        width: "100%",
+        textAlign: "left",
+        fontFamily: "inherit",
+        color: "inherit",
+        cursor: "pointer",
+        appearance: "none",
+        WebkitAppearance: "none",
+        borderTop: `4px solid ${accent}`,
+        transition: "transform .18s ease, box-shadow .18s ease"
+      }}
+      onMouseEnter={(event) => {
+        event.currentTarget.style.transform = "translateY(-3px)";
+        event.currentTarget.style.boxShadow = "0 12px 32px rgba(31,45,85,0.12)";
+      }}
+      onMouseLeave={(event) => {
+        event.currentTarget.style.transform = "translateY(0)";
+        event.currentTarget.style.boxShadow = cardStyle.boxShadow;
+      }}
+    >
+      <h3 style={{ margin: "0 0 12px", fontSize: "13px", color: "#65728c" }}>
+        {title}
+      </h3>
+      <h2 style={{ margin: "0 0 6px", fontSize: "38px", fontWeight: 800, color: "#1b2a48" }}>
+        {count}
+      </h2>
+      <p style={{ margin: 0, fontSize: "12px", color: "#8490a4" }}>
+        {description}
+      </p>
+
+      <span
+        aria-hidden="true"
+        style={{
+          marginTop: "auto",
+          alignSelf: "flex-end",
+          width: "34px",
+          height: "34px",
+          display: "grid",
+          placeItems: "center",
+          borderRadius: "50%",
+          background: accent + "22",
+          color: accent,
+          fontSize: "18px",
+          fontWeight: 700
+        }}
+      >
+        →
+      </span>
+    </button>
+  );
+})}
             </div>
 
-            <div style={cardStyle}>
+            <div className="alumni-welcome" style={cardStyle}>
               <h2>Welcome to ReConnect</h2>
               <p>
                 Support students through mentorship, career opportunities
